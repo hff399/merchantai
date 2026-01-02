@@ -1,5 +1,5 @@
 import { MyContext, ROUTES } from '../types';
-import { TEXTS, CALLBACKS } from '../constants/texts';
+import { TEXTS } from '../constants/texts';
 import { KeyboardBuilder } from '../utils/keyboards';
 import { MessageManager } from '../utils/helpers';
 import { supabase } from '../services/supabase';

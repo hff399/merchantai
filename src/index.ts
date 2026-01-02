@@ -2,7 +2,7 @@ import { Bot, session } from 'grammy';
 import { run } from '@grammyjs/runner';
 import { config } from './config';
 import { MyContext, SessionData, ROUTES } from './types';
-import { TEXTS, CALLBACKS } from './constants/texts';
+import { CALLBACKS } from './constants/texts';
 import { KeyboardBuilder } from './utils/keyboards';
 
 // Handlers
