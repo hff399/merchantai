@@ -1,35 +1,50 @@
-import { MyContext, PLANS } from '../types';
-import { TEXTS } from '../constants/texts';
+import { MyContext, CREDIT_PACKAGES } from '../types';
+import { TEXTS, CALLBACKS } from '../constants/texts';
 import { KeyboardBuilder } from '../utils/keyboards';
 import { MessageManager } from '../utils/helpers';
 import { supabase } from '../services/supabase';
 import { yookassa } from '../services/yookassa';
 
-export async function handleBuyPlan(ctx: MyContext): Promise<void> {
+export async function handleBuyCredits(ctx: MyContext, editMessage = false): Promise<void> {
   await MessageManager.cleanup(ctx);
 
-  const plansText = `${TEXTS.BUY_PLAN_TITLE}
+  const creditsText = `${TEXTS.BUY_CREDITS_TITLE}
 
-${TEXTS.BUY_PLAN_DESC}
+${TEXTS.BUY_CREDITS_DESC}
 
-${TEXTS.BUY_PLAN_STARTER}
+💚 *Малый пакет* - 20 кредитов за 290₽
+💙 *Средний пакет* - 50 кредитов за 590₽ (+10% бонус)
+💜 *Большой пакет* - 150 кредитов за 1490₽ (+20% бонус)
+🧡 *Мега пакет* - 500 кредитов за 3990₽ (+30% бонус)`;
 
-${TEXTS.BUY_PLAN_PRO}
-
-${TEXTS.BUY_PLAN_BUSINESS}
-
-Выберите план:`;
-
-  await ctx.reply(plansText, {
-    reply_markup: KeyboardBuilder.planSelection(),
-  });
+  if (editMessage && ctx.callbackQuery?.message) {
+    try {
+      await ctx.editMessageText(creditsText, {
+        parse_mode: 'Markdown',
+        reply_markup: KeyboardBuilder.creditPackages(),
+      });
+    } catch {
+      await ctx.reply(creditsText, {
+        parse_mode: 'Markdown',
+        reply_markup: KeyboardBuilder.creditPackages(),
+      });
+    }
+  } else {
+    await ctx.reply(creditsText, {
+      parse_mode: 'Markdown',
+      reply_markup: KeyboardBuilder.creditPackages(),
+    });
+  }
 }
 
-export async function handlePlanSelection(ctx: MyContext, planType: string): Promise<void> {
-  const plan = PLANS[planType];
+export async function handleCreditPackageSelection(
+  ctx: MyContext,
+  packageId: string
+): Promise<void> {
+  const creditPackage = CREDIT_PACKAGES[packageId];
 
-  if (!plan) {
-    await ctx.answerCallbackQuery('Неверный план');
+  if (!creditPackage) {
+    await ctx.answerCallbackQuery({ text: 'Неверный пакет', show_alert: true });
     return;
   }
 
@@ -43,27 +58,33 @@ export async function handlePlanSelection(ctx: MyContext, planType: string): Pro
   }
 
   try {
-    // Delete the plan selection message
+    // Delete the package selection message
     if (ctx.callbackQuery?.message) {
       await ctx.api.deleteMessage(ctx.chat!.id, ctx.callbackQuery.message.message_id);
     }
 
     // Send processing message
-    await MessageManager.sendProcessing(ctx, TEXTS.BUY_PLAN_PAYMENT_WAIT);
+    await MessageManager.sendProcessing(ctx, TEXTS.BUY_CREDITS_PAYMENT_WAIT);
 
     // Create payment in database
-    const payment = await supabase.createPayment(user.id, planType, plan.price, 'RUB');
+    const payment = await supabase.createPayment(
+      user.id,
+      packageId,
+      creditPackage.price,
+      'RUB'
+    );
 
     // Create payment with YooKassa
     const yooPayment = await yookassa.createPayment({
-      amount: plan.price,
+      amount: creditPackage.price,
       currency: 'RUB',
-      description: `План ${plan.name} - ${plan.credits} кредитов`,
+      description: `${creditPackage.name} - ${creditPackage.credits} кредитов`,
       returnUrl: `https://t.me/${ctx.me.username}`,
       metadata: {
         payment_id: payment.id,
         user_id: user.id,
-        plan: planType,
+        package_id: packageId,
+        credits: creditPackage.credits,
       },
     });
 
@@ -76,10 +97,11 @@ export async function handlePlanSelection(ctx: MyContext, planType: string): Pro
     await MessageManager.deleteProcessing(ctx);
 
     // Send payment link
-    const paymentText = `💳 *Оплата плана ${plan.name}*
+    const paymentText = `💳 *Покупка кредитов*
 
-💰 Сумма: ${plan.price} ₽
-💳 Кредитов: ${plan.credits}
+📦 Пакет: ${creditPackage.name}
+💰 Сумма: ${creditPackage.price} ₽
+💳 Кредитов: ${creditPackage.credits}
 
 Нажмите кнопку "Оплатить" и следуйте инструкциям.
 После оплаты нажмите "Я оплатил" для проверки статуса.`;
@@ -93,7 +115,8 @@ export async function handlePlanSelection(ctx: MyContext, planType: string): Pro
     ctx.session.tempData = {
       paymentId: payment.id,
       yooPaymentId: yooPayment.id,
-      plan: planType,
+      packageId: packageId,
+      credits: creditPackage.credits,
     };
   } catch (error) {
     console.error('Payment creation error:', error);
@@ -130,19 +153,15 @@ export async function handlePaymentCheck(ctx: MyContext): Promise<void> {
         return;
       }
 
-      // Get plan details
-      const plan = PLANS[paymentData.plan];
+      const creditsToAdd = paymentData.credits || 0;
 
       // Update payment status
       await supabase.updatePayment(paymentData.paymentId, {
         status: 'succeeded',
       });
 
-      // Update user plan and credits
-      await supabase.updateUser(user.id, {
-        plan: paymentData.plan,
-        credits: user.credits + plan.credits,
-      });
+      // Add credits to user
+      await supabase.updateUserCredits(user.id, creditsToAdd);
 
       // Delete payment message
       if (ctx.callbackQuery?.message) {
@@ -151,11 +170,10 @@ export async function handlePaymentCheck(ctx: MyContext): Promise<void> {
 
       // Send success message
       await ctx.reply(
-        `${TEXTS.BUY_PLAN_PAYMENT_SUCCESS}
+        `${TEXTS.BUY_CREDITS_PAYMENT_SUCCESS}
 
-🎉 План "${plan.name}" активирован!
-💳 Начислено кредитов: ${plan.credits}
-💰 Всего кредитов: ${user.credits + plan.credits}`,
+🎉 Зачислено кредитов: ${creditsToAdd}
+💰 Всего кредитов: ${user.credits + creditsToAdd}`,
         {
           reply_markup: KeyboardBuilder.mainMenu(),
         }
@@ -198,7 +216,7 @@ export async function handlePaymentCancel(ctx: MyContext): Promise<void> {
     await ctx.api.deleteMessage(ctx.chat!.id, ctx.callbackQuery.message.message_id);
   }
 
-  await ctx.reply(TEXTS.BUY_PLAN_PAYMENT_CANCELLED, {
+  await ctx.reply(TEXTS.BUY_CREDITS_PAYMENT_CANCELLED, {
     reply_markup: KeyboardBuilder.mainMenu(),
   });
 

@@ -1,79 +1,126 @@
-import { Keyboard, InlineKeyboard } from 'grammy';
-import { TEXTS, KEYBOARD_LAYOUTS } from '../constants/texts';
+import { InlineKeyboard } from 'grammy';
+import { TEXTS, CALLBACKS } from '../constants/texts';
+import { CREDIT_PACKAGES } from '../types';
 
 export class KeyboardBuilder {
-  static mainMenu(): Keyboard {
-    const keyboard = new Keyboard();
-    KEYBOARD_LAYOUTS.MAIN_MENU.forEach((row) => {
-      keyboard.row();
-      row.forEach((button) => {
-        keyboard.text(button);
-      });
-    });
-    return keyboard.resized().persistent();
-  }
-  
-
-  static backToMenu(): Keyboard {
-    const keyboard = new Keyboard();
-    KEYBOARD_LAYOUTS.BACK_TO_MENU.forEach((row) => {
-      keyboard.row();
-      row.forEach((button) => {
-        keyboard.text(button);
-      });
-    });
-    return keyboard.resized().persistent();
-  }
-
-
-  static cancelAndBack(): InlineKeyboard {
+  // Main menu - now inline
+  static mainMenu(): InlineKeyboard {
     return new InlineKeyboard()
-      .text(TEXTS.BTN_BACK, 'back_to_menu');
+      .text(TEXTS.BTN_IMAGE_CARD, CALLBACKS.IMAGE_CARD)
+      .text(TEXTS.BTN_IMAGE_EDIT, CALLBACKS.IMAGE_EDIT)
+      .row()
+      .text(TEXTS.BTN_PHOTO_SESSION, CALLBACKS.PHOTO_SESSION)
+      .row()
+      .text(TEXTS.BTN_MY_PROFILE, CALLBACKS.PROFILE)
+      .text(TEXTS.BTN_SUPPORT, CALLBACKS.SUPPORT)
+      .row()
+      .text(TEXTS.BTN_BUY_CREDITS, CALLBACKS.BUY_CREDITS);
   }
 
-  static profileActions(): Keyboard {
-    const keyboard = new Keyboard();
-    KEYBOARD_LAYOUTS.PROFILE_ACTIONS.forEach((row) => {
-      keyboard.row();
-      row.forEach((button) => {
-        keyboard.text(button);
-      });
-    });
-    return keyboard.resized().persistent();
+  // Back to menu button
+  static backToMenu(): InlineKeyboard {
+    return new InlineKeyboard().text(TEXTS.BTN_MAIN_MENU, CALLBACKS.BACK_TO_MENU);
   }
 
-  static supportActions(): Keyboard {
-    const keyboard = new Keyboard();
-    KEYBOARD_LAYOUTS.SUPPORT_ACTIONS.forEach((row) => {
-      keyboard.row();
-      row.forEach((button) => {
-        keyboard.text(button);
-      });
-    });
-    return keyboard.resized().persistent();
+  // Image card - waiting for photo
+  static imageCardWaitingPhoto(): InlineKeyboard {
+    return new InlineKeyboard().text(TEXTS.BTN_MAIN_MENU, CALLBACKS.BACK_TO_MENU);
   }
 
-  static planSelection(): InlineKeyboard {
+  // Image card - photo received, waiting for prompt
+  static imageCardPhotoReceived(): InlineKeyboard {
     return new InlineKeyboard()
-      .text('💚 Стартовый - 490₽', 'plan_starter')
+      .text('⏭️ Пропустить', CALLBACKS.SKIP_PROMPT)
       .row()
-      .text('💙 Профессиональный - 1490₽', 'plan_pro')
-      .row()
-      .text('💜 Бизнес - 2990₽', 'plan_business')
-      .row()
-      .text(TEXTS.BTN_BACK, 'back_to_menu');
+      .text(TEXTS.BTN_MAIN_MENU, CALLBACKS.BACK_TO_MENU);
   }
 
+  // Image card session - after generation
+  static imageCardSession(): InlineKeyboard {
+    return new InlineKeyboard()
+      .text('🔄 Изменить промпт', CALLBACKS.CHANGE_PROMPT)
+      .row()
+      .text('📷 Новое фото', CALLBACKS.NEW_PHOTO)
+      .text('🔁 Повторить', CALLBACKS.REGENERATE)
+      .row()
+      .text(TEXTS.BTN_MAIN_MENU, CALLBACKS.BACK_TO_MENU);
+  }
+
+  // Image edit - waiting for photo
+  static imageEditWaitingPhoto(): InlineKeyboard {
+    return new InlineKeyboard().text(TEXTS.BTN_MAIN_MENU, CALLBACKS.BACK_TO_MENU);
+  }
+
+  // Image edit - photo received, waiting for prompt (prompt required for edit)
+  static imageEditPhotoReceived(): InlineKeyboard {
+    return new InlineKeyboard().text(TEXTS.BTN_MAIN_MENU, CALLBACKS.BACK_TO_MENU);
+  }
+
+  // Image edit session - after editing
+  static imageEditSession(): InlineKeyboard {
+    return new InlineKeyboard()
+      .text('🔄 Изменить промпт', CALLBACKS.EDIT_CHANGE_PROMPT)
+      .row()
+      .text('📷 Новое фото', CALLBACKS.EDIT_NEW_PHOTO)
+      .text('🔁 Повторить', CALLBACKS.EDIT_REGENERATE)
+      .row()
+      .text(TEXTS.BTN_MAIN_MENU, CALLBACKS.BACK_TO_MENU);
+  }
+
+  // Profile actions - inline
+  static profileActions(): InlineKeyboard {
+    return new InlineKeyboard()
+      .text(TEXTS.PROFILE_BTN_BUY_CREDITS, CALLBACKS.PROFILE_BUY_CREDITS)
+      .text(TEXTS.PROFILE_BTN_HISTORY, CALLBACKS.PROFILE_HISTORY)
+      .row()
+      .text(TEXTS.BTN_MAIN_MENU, CALLBACKS.BACK_TO_MENU);
+  }
+
+  // Support actions - inline
+  static supportActions(): InlineKeyboard {
+    return new InlineKeyboard()
+      .text(TEXTS.SUPPORT_BTN_FAQ, CALLBACKS.SUPPORT_FAQ)
+      .text(TEXTS.SUPPORT_BTN_CONTACT, CALLBACKS.SUPPORT_CONTACT)
+      .row()
+      .text(TEXTS.BTN_MAIN_MENU, CALLBACKS.BACK_TO_MENU);
+  }
+
+  // Credit packages selection - inline
+  static creditPackages(): InlineKeyboard {
+    const small = CREDIT_PACKAGES.small;
+    const medium = CREDIT_PACKAGES.medium;
+    const large = CREDIT_PACKAGES.large;
+    const mega = CREDIT_PACKAGES.mega;
+
+    return new InlineKeyboard()
+      .text(`💚 ${small.credits} кред. - ${small.price}₽`, CALLBACKS.BUY_SMALL)
+      .row()
+      .text(`💙 ${medium.credits} кред. - ${medium.price}₽`, CALLBACKS.BUY_MEDIUM)
+      .row()
+      .text(`💜 ${large.credits} кред. - ${large.price}₽`, CALLBACKS.BUY_LARGE)
+      .row()
+      .text(`🧡 ${mega.credits} кред. - ${mega.price}₽`, CALLBACKS.BUY_MEGA)
+      .row()
+      .text(TEXTS.BTN_MAIN_MENU, CALLBACKS.BACK_TO_MENU);
+  }
+
+  // Payment confirmation
   static paymentConfirm(paymentUrl: string): InlineKeyboard {
     return new InlineKeyboard()
       .url('💳 Оплатить', paymentUrl)
       .row()
-      .text('✅ Я оплатил', 'payment_check')
+      .text('✅ Я оплатил', CALLBACKS.PAYMENT_CHECK)
       .row()
-      .text(TEXTS.BTN_CANCEL, 'payment_cancel');
+      .text(TEXTS.BTN_CANCEL, CALLBACKS.PAYMENT_CANCEL);
   }
 
-  static remove(): { remove_keyboard: boolean } {
-    return { remove_keyboard: true };
+  // Photo session
+  static photoSessionWaiting(): InlineKeyboard {
+    return new InlineKeyboard().text(TEXTS.BTN_MAIN_MENU, CALLBACKS.BACK_TO_MENU);
+  }
+
+  // Simple back button
+  static back(): InlineKeyboard {
+    return new InlineKeyboard().text(TEXTS.BTN_BACK, CALLBACKS.BACK_TO_MENU);
   }
 }

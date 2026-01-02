@@ -2,20 +2,36 @@ import { Bot, session } from 'grammy';
 import { run } from '@grammyjs/runner';
 import { config } from './config';
 import { MyContext, SessionData, ROUTES } from './types';
-import { TEXTS } from './constants/texts';
+import { TEXTS, CALLBACKS } from './constants/texts';
 
 // Handlers
-import { showMainMenu, handleMainMenuNavigation } from './handlers/mainMenu';
-import { handleImageCard, handleImageCardPhoto } from './handlers/imageCard';
+import { showMainMenu } from './handlers/mainMenu';
+import {
+  handleImageCard,
+  handleImageCardPhoto,
+  handleImageCardPrompt,
+  handleSkipPrompt,
+  handleRegenerate,
+  handleChangePrompt,
+  handleNewPhoto,
+} from './handlers/imageCard';
+import {
+  handleImageEdit,
+  handleImageEditPhoto,
+  handleImageEditPrompt,
+  handleEditRegenerate,
+  handleEditChangePrompt,
+  handleEditNewPhoto,
+} from './handlers/imageEdit';
 import { handlePhotoSession, handlePhotoSessionPhoto } from './handlers/photoSession';
 import { handleProfile, handleProfileHistory } from './handlers/profile';
 import { handleSupport, handleSupportFAQ, handleSupportContact } from './handlers/support';
 import {
-  handleBuyPlan,
-  handlePlanSelection,
+  handleBuyCredits,
+  handleCreditPackageSelection,
   handlePaymentCheck,
   handlePaymentCancel,
-} from './handlers/buyPlan';
+} from './handlers/buyCredits';
 
 // Create bot instance
 const bot = new Bot<MyContext>(config.botToken);
@@ -59,15 +75,22 @@ bot.command('help', async (ctx) => {
    • Загрузите фото товара
    • Добавьте описание (опционально)
    • Получите готовую карточку!
+   • Можете изменить промпт и сгенерировать снова
 
-2️⃣ *Фотосессия товара*
+2️⃣ *Редактирование изображения*
+   • Нажмите "✏️ Изменить изображение"
+   • Загрузите изображение
+   • Опишите желаемые изменения
+   • Получите обработанное изображение!
+
+3️⃣ *Фотосессия товара*
    • Нажмите "📸 Фотосессия товара"
    • Загрузите фото товара
    • Получите 5-10 профессиональных фото!
 
-3️⃣ *Управление аккаунтом*
+4️⃣ *Управление аккаунтом*
    • "👤 Мой профиль" - информация об аккаунте
-   • "⭐ Купить план" - приобрести кредиты
+   • "💳 Купить кредиты" - приобрести кредиты
    • "💬 Поддержка" - связаться с нами
 
 *Вопросы?*
@@ -76,82 +99,143 @@ bot.command('help', async (ctx) => {
   await ctx.reply(helpText, { parse_mode: 'Markdown' });
 });
 
-// Callback query handlers
-bot.callbackQuery(/^plan_(.+)$/, async (ctx) => {
-  const planType = ctx.match[1];
-  await handlePlanSelection(ctx, planType);
-});
+// ============================================
+// CALLBACK QUERY HANDLERS
+// ============================================
 
-bot.callbackQuery('payment_check', handlePaymentCheck);
-bot.callbackQuery('payment_cancel', handlePaymentCancel);
-bot.callbackQuery('back_to_menu', async (ctx) => {
+// Main menu callbacks
+bot.callbackQuery(CALLBACKS.BACK_TO_MENU, async (ctx) => {
   await ctx.answerCallbackQuery();
-  if (ctx.callbackQuery?.message) {
-    await ctx.api.deleteMessage(ctx.chat!.id, ctx.callbackQuery.message.message_id);
-  }
-  await showMainMenu(ctx);
+  await showMainMenu(ctx, true);
 });
 
-// Message handlers
+bot.callbackQuery(CALLBACKS.IMAGE_CARD, async (ctx) => {
+  await ctx.answerCallbackQuery();
+  await handleImageCard(ctx, true);
+});
+
+bot.callbackQuery(CALLBACKS.IMAGE_EDIT, async (ctx) => {
+  await ctx.answerCallbackQuery();
+  await handleImageEdit(ctx, true);
+});
+
+bot.callbackQuery(CALLBACKS.PHOTO_SESSION, async (ctx) => {
+  await ctx.answerCallbackQuery();
+  await handlePhotoSession(ctx, true);
+});
+
+bot.callbackQuery(CALLBACKS.PROFILE, async (ctx) => {
+  await ctx.answerCallbackQuery();
+  await handleProfile(ctx, true);
+});
+
+bot.callbackQuery(CALLBACKS.SUPPORT, async (ctx) => {
+  await ctx.answerCallbackQuery();
+  await handleSupport(ctx, true);
+});
+
+bot.callbackQuery(CALLBACKS.BUY_CREDITS, async (ctx) => {
+  await ctx.answerCallbackQuery();
+  await handleBuyCredits(ctx, true);
+});
+
+// Image card session callbacks
+bot.callbackQuery(CALLBACKS.SKIP_PROMPT, handleSkipPrompt);
+bot.callbackQuery(CALLBACKS.REGENERATE, handleRegenerate);
+bot.callbackQuery(CALLBACKS.CHANGE_PROMPT, handleChangePrompt);
+bot.callbackQuery(CALLBACKS.NEW_PHOTO, handleNewPhoto);
+
+// Image edit session callbacks
+bot.callbackQuery(CALLBACKS.EDIT_REGENERATE, handleEditRegenerate);
+bot.callbackQuery(CALLBACKS.EDIT_CHANGE_PROMPT, handleEditChangePrompt);
+bot.callbackQuery(CALLBACKS.EDIT_NEW_PHOTO, handleEditNewPhoto);
+
+// Profile callbacks
+bot.callbackQuery(CALLBACKS.PROFILE_BUY_CREDITS, async (ctx) => {
+  await ctx.answerCallbackQuery();
+  await handleBuyCredits(ctx, true);
+});
+bot.callbackQuery(CALLBACKS.PROFILE_HISTORY, handleProfileHistory);
+
+// Support callbacks
+bot.callbackQuery(CALLBACKS.SUPPORT_FAQ, handleSupportFAQ);
+bot.callbackQuery(CALLBACKS.SUPPORT_CONTACT, handleSupportContact);
+
+// Credit package purchase callbacks
+bot.callbackQuery(CALLBACKS.BUY_SMALL, async (ctx) => {
+  await handleCreditPackageSelection(ctx, 'small');
+});
+bot.callbackQuery(CALLBACKS.BUY_MEDIUM, async (ctx) => {
+  await handleCreditPackageSelection(ctx, 'medium');
+});
+bot.callbackQuery(CALLBACKS.BUY_LARGE, async (ctx) => {
+  await handleCreditPackageSelection(ctx, 'large');
+});
+bot.callbackQuery(CALLBACKS.BUY_MEGA, async (ctx) => {
+  await handleCreditPackageSelection(ctx, 'mega');
+});
+
+// Payment callbacks
+bot.callbackQuery(CALLBACKS.PAYMENT_CHECK, handlePaymentCheck);
+bot.callbackQuery(CALLBACKS.PAYMENT_CANCEL, handlePaymentCancel);
+
+// ============================================
+// MESSAGE HANDLERS
+// ============================================
+
+// Text message handler
 bot.on('message:text', async (ctx) => {
-  const text = ctx.message.text;
+  const route = ctx.session.currentRoute;
 
-  // Handle navigation based on current route
-  const navigationHandled = await handleMainMenuNavigation(ctx);
-  if (navigationHandled) {
-    // Route changed, handle the new route
-    switch (ctx.session.currentRoute) {
-      case ROUTES.IMAGE_CARD:
-        await handleImageCard(ctx);
-        break;
-      case ROUTES.PHOTO_SESSION:
-        await handlePhotoSession(ctx);
-        break;
-      case ROUTES.PROFILE:
-        await handleProfile(ctx);
-        break;
-      case ROUTES.SUPPORT:
-        await handleSupport(ctx);
-        break;
-      case ROUTES.BUY_PLAN:
-        await handleBuyPlan(ctx);
-        break;
-    }
-    return;
-  }
-
-  // Handle specific actions based on current route
-  switch (ctx.session.currentRoute) {
-    case ROUTES.PROFILE:
-      if (text === TEXTS.PROFILE_BTN_UPGRADE) {
-        ctx.session.currentRoute = ROUTES.BUY_PLAN;
-        await handleBuyPlan(ctx);
-      } else if (text === TEXTS.PROFILE_BTN_HISTORY) {
-        await handleProfileHistory(ctx);
-      }
+  // Handle prompt input based on current route
+  switch (route) {
+    case ROUTES.IMAGE_CARD_WAITING_PROMPT:
+      await handleImageCardPrompt(ctx);
       break;
 
-    case ROUTES.SUPPORT:
-      if (text === TEXTS.SUPPORT_BTN_FAQ) {
-        await handleSupportFAQ(ctx);
-      } else if (text === TEXTS.SUPPORT_BTN_CONTACT) {
-        await handleSupportContact(ctx);
+    case ROUTES.IMAGE_EDIT_WAITING_PROMPT:
+      await handleImageEditPrompt(ctx);
+      break;
+
+    case ROUTES.IMAGE_CARD_SESSION:
+      // User sent text while in session - treat as new prompt and regenerate
+      if (ctx.session.imageGenSession) {
+        ctx.session.imageGenSession.prompt = ctx.message.text;
       }
+      // handleRegenerate will check credits
+      await handleRegenerate(ctx);
+      break;
+
+    case ROUTES.IMAGE_EDIT_SESSION:
+      // User sent text while in edit session - treat as new prompt and regenerate
+      if (ctx.session.imageEditSession) {
+        ctx.session.imageEditSession.prompt = ctx.message.text;
+      }
+      // handleEditRegenerate will check credits
+      await handleEditRegenerate(ctx);
       break;
 
     default:
-      // Unknown command in current route
+      // Unknown state - show hint
       await ctx.reply(
         'Используйте кнопки меню для навигации или отправьте /menu для возврата в главное меню.'
       );
   }
 });
 
-// Photo handlers - context-aware
+// Photo handler - context-aware
 bot.on('message:photo', async (ctx) => {
-  switch (ctx.session.currentRoute) {
-    case ROUTES.IMAGE_CARD:
+  const route = ctx.session.currentRoute;
+
+  switch (route) {
+    case ROUTES.IMAGE_CARD_WAITING_PHOTO:
+    case ROUTES.IMAGE_CARD_SESSION:
       await handleImageCardPhoto(ctx);
+      break;
+
+    case ROUTES.IMAGE_EDIT_WAITING_PHOTO:
+    case ROUTES.IMAGE_EDIT_SESSION:
+      await handleImageEditPhoto(ctx);
       break;
 
     case ROUTES.PHOTO_SESSION:
@@ -160,14 +244,17 @@ bot.on('message:photo', async (ctx) => {
 
     default:
       await ctx.reply(
-        'Для загрузки фото выберите соответствующий раздел:\n• 🎨 Создать карточку\n• 📸 Фотосессия товара'
+        'Для загрузки фото выберите соответствующий раздел:\n• 🎨 Создать карточку\n• ✏️ Изменить изображение\n• 📸 Фотосессия товара',
+        { reply_markup: { inline_keyboard: [[{ text: '🏠 Главное меню', callback_data: CALLBACKS.BACK_TO_MENU }]] } }
       );
   }
 });
 
 // Handle other message types
 bot.on('message', async (ctx) => {
-  await ctx.reply('Пожалуйста, используйте кнопки меню для навигации.');
+  await ctx.reply('Пожалуйста, отправьте фото или используйте кнопки меню для навигации.', {
+    reply_markup: { inline_keyboard: [[{ text: '🏠 Главное меню', callback_data: CALLBACKS.BACK_TO_MENU }]] },
+  });
 });
 
 // Start bot

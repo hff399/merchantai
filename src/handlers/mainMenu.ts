@@ -1,10 +1,10 @@
 import { MyContext, ROUTES } from '../types';
-import { TEXTS } from '../constants/texts';
+import { TEXTS, CALLBACKS } from '../constants/texts';
 import { KeyboardBuilder } from '../utils/keyboards';
 import { MessageManager } from '../utils/helpers';
 import { supabase } from '../services/supabase';
 
-export async function showMainMenu(ctx: MyContext): Promise<void> {
+export async function showMainMenu(ctx: MyContext, editMessage = false): Promise<void> {
   // Ensure user exists in database
   if (ctx.from) {
     await supabase.getOrCreateUser(
@@ -18,47 +18,41 @@ export async function showMainMenu(ctx: MyContext): Promise<void> {
   // Clean up any old messages
   await MessageManager.cleanup(ctx);
 
-  // Update session
+  // Reset session
   ctx.session.currentRoute = ROUTES.MAIN_MENU;
   ctx.session.tempData = {};
+  ctx.session.imageGenSession = undefined;
+  ctx.session.imageEditSession = undefined;
 
-  // Send welcome message with main menu keyboard
-  await ctx.reply(TEXTS.WELCOME, {
-    reply_markup: KeyboardBuilder.mainMenu(),
-  });
+  // Send or edit welcome message with inline keyboard
+  if (editMessage && ctx.callbackQuery?.message) {
+    try {
+      await ctx.editMessageText(TEXTS.WELCOME, {
+        reply_markup: KeyboardBuilder.mainMenu(),
+      });
+    } catch (error) {
+      // If edit fails, send new message
+      await ctx.reply(TEXTS.WELCOME, {
+        reply_markup: KeyboardBuilder.mainMenu(),
+      });
+    }
+  } else {
+    await ctx.reply(TEXTS.WELCOME, {
+      reply_markup: KeyboardBuilder.mainMenu(),
+    });
+  }
 }
 
-export async function handleMainMenuNavigation(ctx: MyContext): Promise<boolean> {
-  const text = ctx.message?.text;
+export async function handleMainMenuCallback(ctx: MyContext): Promise<void> {
+  const callbackData = ctx.callbackQuery?.data;
 
-  if (!text) return false;
+  if (!callbackData) return;
 
-  switch (text) {
-    case TEXTS.BTN_IMAGE_CARD:
-      ctx.session.currentRoute = ROUTES.IMAGE_CARD;
-      return true;
+  await ctx.answerCallbackQuery();
 
-    case TEXTS.BTN_PHOTO_SESSION:
-      ctx.session.currentRoute = ROUTES.PHOTO_SESSION;
-      return true;
-
-    case TEXTS.BTN_MY_PROFILE:
-      ctx.session.currentRoute = ROUTES.PROFILE;
-      return true;
-
-    case TEXTS.BTN_SUPPORT:
-      ctx.session.currentRoute = ROUTES.SUPPORT;
-      return true;
-
-    case TEXTS.BTN_BUY_PLAN:
-      ctx.session.currentRoute = ROUTES.BUY_PLAN;
-      return true;
-
-    case TEXTS.BTN_MAIN_MENU:
-      await showMainMenu(ctx);
-      return true;
-
-    default:
-      return false;
+  switch (callbackData) {
+    case CALLBACKS.BACK_TO_MENU:
+      await showMainMenu(ctx, true);
+      break;
   }
 }

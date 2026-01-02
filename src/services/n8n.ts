@@ -7,6 +7,15 @@ interface ImageGenerationParams {
   style?: string;
   userId: string;
   orderId: string;
+  sessionId: string; // Unique session ID for ChatGPT memory
+}
+
+interface ImageEditParams {
+  photoUrl: string;
+  description: string;
+  userId: string;
+  orderId: string;
+  sessionId: string; // Unique session ID for ChatGPT memory
 }
 
 interface PhotoSessionParams {
@@ -33,7 +42,6 @@ interface N8NResponse {
   message?: string;
 }
 
-
 class N8NService {
   private webhookUrl: string;
 
@@ -41,50 +49,90 @@ class N8NService {
     this.webhookUrl = config.n8n.webhookUrl;
   }
 
-
-
   async generateImageCard(params: ImageGenerationParams): Promise<N8NResponse> {
-  try {
-    const response = await axios.post(
-      `${this.webhookUrl}/image-card`,
-      {
-        photo_url: params.photoUrl,
-        description: params.description || '',
-        style: params.style || 'modern',
-        user_id: params.userId,
-        order_id: params.orderId,
-        action: 'generate_card',
-      },
-      {
-        timeout: 120000,
-
-        // 🔴 CRITICAL: do NOT let axios touch encoding
-        responseType: 'arraybuffer',
-        transformResponse: (data) => data,
-
-        headers: {
-          Accept: 'image/jpeg,image/png',
+    try {
+      const response = await axios.post(
+        `${this.webhookUrl}/image-card`,
+        {
+          photo_url: params.photoUrl,
+          description: params.description || '',
+          style: params.style || 'modern',
+          user_id: params.userId,
+          order_id: params.orderId,
+          session_id: params.sessionId, // For ChatGPT memory
+          action: 'generate_card',
         },
-      }
-    );
+        {
+          timeout: 120000,
 
-    // response.data is now a REAL ArrayBuffer
-    const uint8 = new Uint8Array(response.data);
+          // CRITICAL: do NOT let axios touch encoding
+          responseType: 'arraybuffer',
+          transformResponse: (data) => data,
 
-    return {
-      success: true,
-      buffer: uint8,
-      contentType: response.headers['content-type'],
-    };
-  } catch (error: any) {
-    console.error('n8n image card generation error:', error.message);
-    return {
-      success: false,
-      error: 'Ошибка генерации карточки',
-    };
+          headers: {
+            Accept: 'image/jpeg,image/png',
+          },
+        }
+      );
+
+      // response.data is now a REAL ArrayBuffer
+      const uint8 = new Uint8Array(response.data);
+
+      return {
+        success: true,
+        buffer: uint8,
+        contentType: response.headers['content-type'],
+      };
+    } catch (error: any) {
+      console.error('n8n image card generation error:', error.message);
+      return {
+        success: false,
+        error: 'Ошибка генерации карточки',
+      };
+    }
   }
-}
 
+  async editImage(params: ImageEditParams): Promise<N8NResponse> {
+    try {
+      const response = await axios.post(
+        `${this.webhookUrl}/image-edit`,
+        {
+          photo_url: params.photoUrl,
+          description: params.description,
+          user_id: params.userId,
+          order_id: params.orderId,
+          session_id: params.sessionId, // For ChatGPT memory
+          action: 'edit_image',
+        },
+        {
+          timeout: 120000,
+
+          // CRITICAL: do NOT let axios touch encoding
+          responseType: 'arraybuffer',
+          transformResponse: (data) => data,
+
+          headers: {
+            Accept: 'image/jpeg,image/png',
+          },
+        }
+      );
+
+      // response.data is now a REAL ArrayBuffer
+      const uint8 = new Uint8Array(response.data);
+
+      return {
+        success: true,
+        buffer: uint8,
+        contentType: response.headers['content-type'],
+      };
+    } catch (error: any) {
+      console.error('n8n image edit error:', error.message);
+      return {
+        success: false,
+        error: 'Ошибка редактирования изображения',
+      };
+    }
+  }
 
   async generatePhotoSession(params: PhotoSessionParams): Promise<N8NResponse> {
     try {

@@ -1,4 +1,4 @@
-import { MyContext } from '../types';
+import { MyContext, ROUTES } from '../types';
 import { TEXTS } from '../constants/texts';
 import { KeyboardBuilder } from '../utils/keyboards';
 import { MessageManager } from '../utils/helpers';
@@ -6,17 +6,34 @@ import { supabase } from '../services/supabase';
 import { n8n } from '../services/n8n';
 import { InputMediaPhoto } from 'grammy/types';
 
-const PHOTO_SESSION_COST = 4; // Credits per session
+const PHOTO_SESSION_COST = 2; // Credits per session
 
-export async function handlePhotoSession(ctx: MyContext): Promise<void> {
+export async function handlePhotoSession(ctx: MyContext, editMessage = false): Promise<void> {
   await MessageManager.cleanup(ctx);
 
-  await ctx.reply(TEXTS.PHOTO_SESSION_TITLE, {
-    reply_markup: KeyboardBuilder.backToMenu(),
-  });
+  ctx.session.currentRoute = ROUTES.PHOTO_SESSION;
 
-  await ctx.reply(TEXTS.PHOTO_SESSION_DESC);
-  await ctx.reply(TEXTS.PHOTO_SESSION_UPLOAD);
+  const sessionText = `${TEXTS.PHOTO_SESSION_TITLE}
+
+${TEXTS.PHOTO_SESSION_DESC}
+
+${TEXTS.PHOTO_SESSION_UPLOAD}`;
+
+  if (editMessage && ctx.callbackQuery?.message) {
+    try {
+      await ctx.editMessageText(sessionText, {
+        reply_markup: KeyboardBuilder.photoSessionWaiting(),
+      });
+    } catch {
+      await ctx.reply(sessionText, {
+        reply_markup: KeyboardBuilder.photoSessionWaiting(),
+      });
+    }
+  } else {
+    await ctx.reply(sessionText, {
+      reply_markup: KeyboardBuilder.photoSessionWaiting(),
+    });
+  }
 }
 
 export async function handlePhotoSessionPhoto(ctx: MyContext): Promise<void> {
@@ -36,7 +53,7 @@ export async function handlePhotoSessionPhoto(ctx: MyContext): Promise<void> {
   // Check credits
   if (user.credits < PHOTO_SESSION_COST) {
     await ctx.reply(TEXTS.IMAGE_CARD_NO_CREDITS, {
-      reply_markup: KeyboardBuilder.planSelection(),
+      reply_markup: KeyboardBuilder.creditPackages(),
     });
     return;
   }
@@ -50,7 +67,7 @@ export async function handlePhotoSessionPhoto(ctx: MyContext): Promise<void> {
   const description = ctx.message.caption || '';
 
   // Send processing message
-  const processingMsg = await MessageManager.sendProcessing(ctx, TEXTS.PHOTO_SESSION_WAIT);
+  await MessageManager.sendProcessing(ctx, TEXTS.PHOTO_SESSION_WAIT);
 
   try {
     // Create order

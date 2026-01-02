@@ -67,7 +67,11 @@ class SupabaseService {
   }
 
   async updateUserCredits(userId: string, creditsChange: number): Promise<User> {
-    const { data: user } = await this.client.from('users').select('credits').eq('id', userId).single();
+    const { data: user } = await this.client
+      .from('users')
+      .select('credits')
+      .eq('id', userId)
+      .single();
 
     if (!user) throw new Error('User not found');
 
@@ -82,7 +86,7 @@ class SupabaseService {
   // Order operations
   async createOrder(
     userId: string,
-    type: 'image_card' | 'photo_session',
+    type: 'image_card' | 'photo_session' | 'image_edit',
     inputData: any,
     creditsUsed: number
   ): Promise<Order> {
@@ -162,7 +166,11 @@ class SupabaseService {
   }
 
   async getPayment(paymentId: string): Promise<Payment | null> {
-    const { data, error } = await this.client.from('payments').select('*').eq('id', paymentId).single();
+    const { data, error } = await this.client
+      .from('payments')
+      .select('*')
+      .eq('id', paymentId)
+      .single();
 
     if (error) {
       if (error.code === 'PGRST116') return null;
