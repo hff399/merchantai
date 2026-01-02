@@ -28,16 +28,19 @@ export async function showMainMenu(ctx: MyContext, editMessage = false): Promise
   if (editMessage && ctx.callbackQuery?.message) {
     try {
       await ctx.editMessageText(TEXTS.WELCOME, {
+        parse_mode: 'HTML',
         reply_markup: KeyboardBuilder.mainMenu(),
       });
     } catch (error) {
       // If edit fails, send new message
       await ctx.reply(TEXTS.WELCOME, {
+        parse_mode: 'HTML',
         reply_markup: KeyboardBuilder.mainMenu(),
       });
     }
   } else {
     await ctx.reply(TEXTS.WELCOME, {
+      parse_mode: 'HTML',
       reply_markup: KeyboardBuilder.mainMenu(),
     });
   }

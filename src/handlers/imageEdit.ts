@@ -154,53 +154,6 @@ export async function handleEditRegenerate(ctx: MyContext): Promise<void> {
   await processImageEdit(ctx, user.id);
 }
 
-// Handle change prompt callback
-export async function handleEditChangePrompt(ctx: MyContext): Promise<void> {
-  await ctx.answerCallbackQuery();
-
-  // Check credits before asking for new prompt
-  const user = await supabase.getUser(ctx.from!.id);
-  if (!user) {
-    await ctx.reply(TEXTS.ERROR_GENERAL);
-    return;
-  }
-
-  if (user.credits < IMAGE_EDIT_COST) {
-    await ctx.reply(TEXTS.IMAGE_CARD_NO_CREDITS, {
-      reply_markup: KeyboardBuilder.creditPackages(),
-    });
-    return;
-  }
-
-  ctx.session.currentRoute = ROUTES.IMAGE_EDIT_WAITING_PROMPT;
-
-  // Edit message to ask for new prompt
-  if (ctx.callbackQuery?.message) {
-    await ctx.editMessageCaption({
-      caption: `📝 Введите новое описание изменений:\n\nТекущий промпт: ${ctx.session.imageEditSession?.prompt || '(пусто)'}`,
-      reply_markup: KeyboardBuilder.imageEditPhotoReceived(),
-    });
-  }
-}
-
-// Handle new photo callback
-export async function handleEditNewPhoto(ctx: MyContext): Promise<void> {
-  await ctx.answerCallbackQuery();
-
-  // Reset session but keep sessionId and count for continuity
-  const sessionId = ctx.session.imageEditSession?.sessionId || uuidv4();
-  const count = ctx.session.imageEditSession?.editCount || 0;
-  ctx.session.imageEditSession = { 
-    sessionId, // Keep same session ID for ChatGPT memory continuity
-    editCount: count 
-  };
-  ctx.session.currentRoute = ROUTES.IMAGE_EDIT_WAITING_PHOTO;
-
-  await ctx.reply(`${TEXTS.IMAGE_EDIT_TITLE}\n\n${TEXTS.IMAGE_EDIT_SEND_PHOTO}`, {
-    reply_markup: KeyboardBuilder.imageEditWaitingPhoto(),
-  });
-}
-
 // Main edit processing function
 async function processImageEdit(ctx: MyContext, userId: string): Promise<void> {
   const session = ctx.session.imageEditSession;

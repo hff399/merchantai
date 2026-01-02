@@ -3,6 +3,7 @@ import { run } from '@grammyjs/runner';
 import { config } from './config';
 import { MyContext, SessionData, ROUTES } from './types';
 import { TEXTS, CALLBACKS } from './constants/texts';
+import { KeyboardBuilder } from './utils/keyboards';
 
 // Handlers
 import { showMainMenu } from './handlers/mainMenu';
@@ -10,18 +11,13 @@ import {
   handleImageCard,
   handleImageCardPhoto,
   handleImageCardPrompt,
-  handleSkipPrompt,
   handleRegenerate,
-  handleChangePrompt,
-  handleNewPhoto,
 } from './handlers/imageCard';
 import {
   handleImageEdit,
   handleImageEditPhoto,
   handleImageEditPrompt,
   handleEditRegenerate,
-  handleEditChangePrompt,
-  handleEditNewPhoto,
 } from './handlers/imageEdit';
 import { handlePhotoSession, handlePhotoSessionPhoto } from './handlers/photoSession';
 import { handleProfile, handleProfileHistory } from './handlers/profile';
@@ -140,15 +136,10 @@ bot.callbackQuery(CALLBACKS.BUY_CREDITS, async (ctx) => {
 });
 
 // Image card session callbacks
-bot.callbackQuery(CALLBACKS.SKIP_PROMPT, handleSkipPrompt);
 bot.callbackQuery(CALLBACKS.REGENERATE, handleRegenerate);
-bot.callbackQuery(CALLBACKS.CHANGE_PROMPT, handleChangePrompt);
-bot.callbackQuery(CALLBACKS.NEW_PHOTO, handleNewPhoto);
 
 // Image edit session callbacks
 bot.callbackQuery(CALLBACKS.EDIT_REGENERATE, handleEditRegenerate);
-bot.callbackQuery(CALLBACKS.EDIT_CHANGE_PROMPT, handleEditChangePrompt);
-bot.callbackQuery(CALLBACKS.EDIT_NEW_PHOTO, handleEditNewPhoto);
 
 // Profile callbacks
 bot.callbackQuery(CALLBACKS.PROFILE_BUY_CREDITS, async (ctx) => {
@@ -199,17 +190,34 @@ bot.on('message:text', async (ctx) => {
 
     case ROUTES.IMAGE_CARD_SESSION:
       // User sent text while in session - treat as new prompt and regenerate
-      if (ctx.session.imageGenSession) {
-        ctx.session.imageGenSession.prompt = ctx.message.text;
+      console.log('IMAGE_CARD_SESSION: received text, session:', JSON.stringify(ctx.session.imageGenSession));
+      
+      if (!ctx.message.text || !ctx.message.text.trim()) {
+        await ctx.reply('⚠️ Пожалуйста, отправьте описание для карточки. Промпт обязателен.');
+        return;
       }
+      
+      // Check if session exists
+      if (!ctx.session.imageGenSession?.photoUrl) {
+        await ctx.reply('⚠️ Сессия истекла. Пожалуйста, начните заново.', {
+          reply_markup: KeyboardBuilder.mainMenu(),
+        });
+        return;
+      }
+      
+      ctx.session.imageGenSession.prompt = ctx.message.text.trim();
       // handleRegenerate will check credits
       await handleRegenerate(ctx);
       break;
 
     case ROUTES.IMAGE_EDIT_SESSION:
       // User sent text while in edit session - treat as new prompt and regenerate
+      if (!ctx.message.text || !ctx.message.text.trim()) {
+        await ctx.reply('⚠️ Пожалуйста, отправьте описание изменений. Промпт обязателен.');
+        return;
+      }
       if (ctx.session.imageEditSession) {
-        ctx.session.imageEditSession.prompt = ctx.message.text;
+        ctx.session.imageEditSession.prompt = ctx.message.text.trim();
       }
       // handleEditRegenerate will check credits
       await handleEditRegenerate(ctx);
@@ -217,6 +225,7 @@ bot.on('message:text', async (ctx) => {
 
     default:
       // Unknown state - show hint
+      console.log('Text handler default case. Current route:', route, 'Session:', JSON.stringify(ctx.session));
       await ctx.reply(
         'Используйте кнопки меню для навигации или отправьте /menu для возврата в главное меню.'
       );

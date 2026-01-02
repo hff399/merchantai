@@ -27,21 +27,16 @@ export class KeyboardBuilder {
     return new InlineKeyboard().text(TEXTS.BTN_MAIN_MENU, CALLBACKS.BACK_TO_MENU);
   }
 
-  // Image card - photo received, waiting for prompt
+  // Image card - photo received, waiting for prompt (prompt is mandatory)
   static imageCardPhotoReceived(): InlineKeyboard {
     return new InlineKeyboard()
-      .text('⏭️ Пропустить', CALLBACKS.SKIP_PROMPT)
-      .row()
       .text(TEXTS.BTN_MAIN_MENU, CALLBACKS.BACK_TO_MENU);
   }
 
-  // Image card session - after generation
+  // Image card session - after generation (user can send text directly or go back)
   static imageCardSession(): InlineKeyboard {
     return new InlineKeyboard()
-      .text('🔄 Изменить промпт', CALLBACKS.CHANGE_PROMPT)
-      .row()
-      .text('📷 Новое фото', CALLBACKS.NEW_PHOTO)
-      .text('🔁 Повторить', CALLBACKS.REGENERATE)
+      .text('🔁 Повторить с тем же промптом', CALLBACKS.REGENERATE)
       .row()
       .text(TEXTS.BTN_MAIN_MENU, CALLBACKS.BACK_TO_MENU);
   }
@@ -56,13 +51,10 @@ export class KeyboardBuilder {
     return new InlineKeyboard().text(TEXTS.BTN_MAIN_MENU, CALLBACKS.BACK_TO_MENU);
   }
 
-  // Image edit session - after editing
+  // Image edit session - after editing (user can send text directly or go back)
   static imageEditSession(): InlineKeyboard {
     return new InlineKeyboard()
-      .text('🔄 Изменить промпт', CALLBACKS.EDIT_CHANGE_PROMPT)
-      .row()
-      .text('📷 Новое фото', CALLBACKS.EDIT_NEW_PHOTO)
-      .text('🔁 Повторить', CALLBACKS.EDIT_REGENERATE)
+      .text('🔁 Повторить с тем же промптом', CALLBACKS.EDIT_REGENERATE)
       .row()
       .text(TEXTS.BTN_MAIN_MENU, CALLBACKS.BACK_TO_MENU);
   }

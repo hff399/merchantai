@@ -75,14 +75,19 @@ export async function handleImageCardPhoto(ctx: MyContext): Promise<void> {
   ctx.session.imageGenSession.photoUrl = photoUrl;
   ctx.session.imageGenSession.photoFileId = photo.file_id;
 
-  // If there was a caption, use it as prompt
+  // If there was a caption, store it as prompt
   if (ctx.message.caption && ctx.message.caption.trim()) {
     ctx.session.imageGenSession.prompt = ctx.message.caption.trim();
-    // Generate immediately
-    await generateImageCard(ctx, user.id);
+  }
+
+  // Always ask for prompt (it's mandatory)
+  ctx.session.currentRoute = ROUTES.IMAGE_CARD_WAITING_PROMPT;
+  
+  if (ctx.session.imageGenSession.prompt) {
+    await ctx.reply(`${TEXTS.IMAGE_CARD_PHOTO_RECEIVED}\n\nТекущий промпт: "${ctx.session.imageGenSession.prompt}"\n\nОтправьте новый промпт или этот же текст для подтверждения.`, {
+      reply_markup: KeyboardBuilder.imageCardPhotoReceived(),
+    });
   } else {
-    // Ask for prompt (optional)
-    ctx.session.currentRoute = ROUTES.IMAGE_CARD_WAITING_PROMPT;
     await ctx.reply(TEXTS.IMAGE_CARD_PHOTO_RECEIVED, {
       reply_markup: KeyboardBuilder.imageCardPhotoReceived(),
     });
@@ -98,45 +103,14 @@ export async function handleImageCardPrompt(ctx: MyContext): Promise<void> {
     return;
   }
 
+  // Prompt is mandatory
+  if (!text || !text.trim()) {
+    await ctx.reply('⚠️ Пожалуйста, отправьте описание для карточки. Промпт обязателен.');
+    return;
+  }
+
   // Store prompt
-  ctx.session.imageGenSession.prompt = text || '';
-
-  // Get user and check credits
-  const user = await supabase.getUser(ctx.from!.id);
-  if (!user) {
-    await ctx.reply(TEXTS.ERROR_GENERAL);
-    return;
-  }
-
-  if (user.credits < IMAGE_CARD_COST) {
-    await ctx.reply(TEXTS.IMAGE_CARD_NO_CREDITS, {
-      reply_markup: KeyboardBuilder.creditPackages(),
-    });
-    return;
-  }
-
-  // Generate
-  await generateImageCard(ctx, user.id);
-}
-
-// Handle skip prompt callback
-export async function handleSkipPrompt(ctx: MyContext): Promise<void> {
-  await ctx.answerCallbackQuery();
-
-  if (!ctx.session.imageGenSession?.photoUrl) {
-    await ctx.reply('Сначала отправьте фото.', {
-      reply_markup: KeyboardBuilder.backToMenu(),
-    });
-    return;
-  }
-
-  // Delete the message asking for prompt
-  if (ctx.callbackQuery?.message) {
-    await MessageManager.deleteMessage(ctx, ctx.callbackQuery.message.message_id);
-  }
-
-  // Set empty prompt
-  ctx.session.imageGenSession.prompt = '';
+  ctx.session.imageGenSession.prompt = text.trim();
 
   // Get user and check credits
   const user = await supabase.getUser(ctx.from!.id);
@@ -169,6 +143,13 @@ export async function handleRegenerate(ctx: MyContext): Promise<void> {
     return;
   }
 
+  if (!ctx.session.imageGenSession?.prompt) {
+    await ctx.reply('Нет промпта для генерации. Отправьте описание.', {
+      reply_markup: KeyboardBuilder.backToMenu(),
+    });
+    return;
+  }
+
   // Get user and check credits
   const user = await supabase.getUser(ctx.from!.id);
   if (!user) {
@@ -185,53 +166,6 @@ export async function handleRegenerate(ctx: MyContext): Promise<void> {
 
   // Generate again
   await generateImageCard(ctx, user.id);
-}
-
-// Handle change prompt callback
-export async function handleChangePrompt(ctx: MyContext): Promise<void> {
-  await ctx.answerCallbackQuery();
-
-  // Check credits before asking for new prompt
-  const user = await supabase.getUser(ctx.from!.id);
-  if (!user) {
-    await ctx.reply(TEXTS.ERROR_GENERAL);
-    return;
-  }
-
-  if (user.credits < IMAGE_CARD_COST) {
-    await ctx.reply(TEXTS.IMAGE_CARD_NO_CREDITS, {
-      reply_markup: KeyboardBuilder.creditPackages(),
-    });
-    return;
-  }
-
-  ctx.session.currentRoute = ROUTES.IMAGE_CARD_WAITING_PROMPT;
-
-  // Edit message to ask for new prompt
-  if (ctx.callbackQuery?.message) {
-    await ctx.editMessageCaption({
-      caption: `📝 Введите новый промпт для генерации:\n\nТекущий промпт: ${ctx.session.imageGenSession?.prompt || '(пусто)'}`,
-      reply_markup: KeyboardBuilder.imageCardPhotoReceived(),
-    });
-  }
-}
-
-// Handle new photo callback
-export async function handleNewPhoto(ctx: MyContext): Promise<void> {
-  await ctx.answerCallbackQuery();
-
-  // Reset session but keep sessionId and count for continuity
-  const sessionId = ctx.session.imageGenSession?.sessionId || uuidv4();
-  const count = ctx.session.imageGenSession?.generationCount || 0;
-  ctx.session.imageGenSession = { 
-    sessionId, // Keep same session ID for ChatGPT memory continuity
-    generationCount: count 
-  };
-  ctx.session.currentRoute = ROUTES.IMAGE_CARD_WAITING_PHOTO;
-
-  await ctx.reply(`${TEXTS.IMAGE_CARD_TITLE}\n\n${TEXTS.IMAGE_CARD_SEND_PHOTO}`, {
-    reply_markup: KeyboardBuilder.imageCardWaitingPhoto(),
-  });
 }
 
 // Main generation function
