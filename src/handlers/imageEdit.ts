@@ -163,7 +163,7 @@ async function processImageEdit(ctx: MyContext, userId: string): Promise<void> {
   }
 
   // Send processing message
-  const processingMsgId = await MessageManager.sendProcessing(ctx, TEXTS.IMAGE_EDIT_WAIT);
+  await MessageManager.sendProcessing(ctx, TEXTS.IMAGE_EDIT_WAIT);
   ctx.session.currentRoute = ROUTES.IMAGE_EDIT_SESSION;
 
   try {

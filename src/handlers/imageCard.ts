@@ -177,7 +177,7 @@ async function generateImageCard(ctx: MyContext, userId: string): Promise<void> 
   }
 
   // Send processing message
-  const processingMsgId = await MessageManager.sendProcessing(ctx, TEXTS.IMAGE_CARD_WAIT);
+  await MessageManager.sendProcessing(ctx, TEXTS.IMAGE_CARD_WAIT);
   ctx.session.currentRoute = ROUTES.IMAGE_CARD_SESSION;
 
   try {
