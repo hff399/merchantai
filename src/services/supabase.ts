@@ -4,6 +4,7 @@ import { User, Order, Payment } from '../types';
 
 class SupabaseService {
   private client: SupabaseClient;
+  private bucketName = 'generated-images'; // Create this bucket in Supabase
 
   constructor() {
     this.client = createClient(config.supabase.url, config.supabase.serviceRoleKey, {
@@ -12,6 +13,41 @@ class SupabaseService {
         persistSession: false,
       },
     });
+  }
+
+  // Upload image to Supabase Storage
+  async uploadImage(
+    buffer: Buffer,
+    userId: string,
+    orderId: string,
+    type: 'card' | 'edit' | 'session' = 'card'
+  ): Promise<string | null> {
+    try {
+      const timestamp = Date.now();
+      const fileName = `${type}/${userId}/${orderId}_${timestamp}.jpg`;
+
+      const { error } = await this.client.storage
+        .from(this.bucketName)
+        .upload(fileName, buffer, {
+          contentType: 'image/jpeg',
+          upsert: false,
+        });
+
+      if (error) {
+        console.error('Supabase storage upload error:', error);
+        return null;
+      }
+
+      // Get public URL
+      const { data: urlData } = this.client.storage
+        .from(this.bucketName)
+        .getPublicUrl(fileName);
+
+      return urlData.publicUrl;
+    } catch (error) {
+      console.error('Upload image error:', error);
+      return null;
+    }
   }
 
   // User operations

@@ -4,6 +4,8 @@ dotenv.config();
 
 interface Config {
   botToken: string;
+  notificationBotToken: string;
+  notificationChatIds: number[];
   supabase: {
     url: string;
     anonKey: string;
@@ -28,8 +30,14 @@ const getEnvVar = (key: string): string => {
   return value;
 };
 
+const getOptionalEnvVar = (key: string, defaultValue = ''): string => {
+  return process.env[key] || defaultValue;
+};
+
 export const config: Config = {
   botToken: getEnvVar('BOT_TOKEN'),
+  notificationBotToken: getOptionalEnvVar('NOTIFICATION_BOT_TOKEN'),
+  notificationChatIds: process.env.NOTIFICATION_CHAT_IDS?.split(',').map(Number).filter(Boolean) || [],
   supabase: {
     url: getEnvVar('SUPABASE_URL'),
     anonKey: getEnvVar('SUPABASE_ANON_KEY'),
