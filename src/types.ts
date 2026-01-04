@@ -77,40 +77,59 @@ export type MyContext = Context & SessionFlavor<SessionData>;
 export interface CreditPackage {
   id: string;
   name: string;
+  emoji: string;
   credits: number;
   price: number;
+  pricePerCard: number;
+  cardsCount: number;
   description: string;
+  badge?: string; // Optional badge like "ХИТ", "ВЫГОДНО"
+  isPopular?: boolean;
 }
 
-// Changed from subscription plans to one-time credit packages
+// New pricing structure optimized for conversions
+// 4 credits = 1 card generation, 2 credits = 1 edit
 export const CREDIT_PACKAGES: Record<string, CreditPackage> = {
-  small: {
-    id: 'small',
-    name: 'Малый пакет',
-    credits: 20,
-    price: 290,
-    description: '20 кредитов',
-  },
-  medium: {
-    id: 'medium',
-    name: 'Средний пакет',
-    credits: 50,
+  starter: {
+    id: 'starter',
+    name: 'Starter',
+    emoji: '',
+    credits: 60,
     price: 590,
-    description: '50 кредитов + 10% бонус',
+    pricePerCard: 39,
+    cardsCount: 15,
+    description: '',
   },
-  large: {
-    id: 'large',
-    name: 'Большой пакет',
-    credits: 150,
+  pro: {
+    id: 'pro',
+    name: 'Pro',
+    emoji: '',
+    credits: 184,
     price: 1490,
-    description: '150 кредитов + 20% бонус',
+    pricePerCard: 32,
+    cardsCount: 46,
+    description: 'Рекомендуем',
+    isPopular: true,
   },
-  mega: {
-    id: 'mega',
-    name: 'Мега пакет',
-    credits: 500,
-    price: 3990,
-    description: '500 кредитов + 30% бонус',
+  big: {
+    id: 'big',
+    name: 'Big',
+    emoji: '',
+    credits: 664,
+    price: 4990,
+    pricePerCard: 30,
+    cardsCount: 166,
+    description: 'Выгодно',
+  },
+  enterprise: {
+    id: 'enterprise',
+    name: 'Enterprise',
+    emoji: '',
+    credits: 0,
+    price: 10000,
+    pricePerCard: 0,
+    cardsCount: 0,
+    description: 'Индивидуально',
   },
 };
 

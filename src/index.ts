@@ -153,17 +153,17 @@ bot.callbackQuery(CALLBACKS.SUPPORT_FAQ, handleSupportFAQ);
 bot.callbackQuery(CALLBACKS.SUPPORT_CONTACT, handleSupportContact);
 
 // Credit package purchase callbacks
-bot.callbackQuery(CALLBACKS.BUY_SMALL, async (ctx) => {
-  await handleCreditPackageSelection(ctx, 'small');
+bot.callbackQuery(CALLBACKS.BUY_STARTER, async (ctx) => {
+  await handleCreditPackageSelection(ctx, 'starter');
 });
-bot.callbackQuery(CALLBACKS.BUY_MEDIUM, async (ctx) => {
-  await handleCreditPackageSelection(ctx, 'medium');
+bot.callbackQuery(CALLBACKS.BUY_PRO, async (ctx) => {
+  await handleCreditPackageSelection(ctx, 'pro');
 });
-bot.callbackQuery(CALLBACKS.BUY_LARGE, async (ctx) => {
-  await handleCreditPackageSelection(ctx, 'large');
+bot.callbackQuery(CALLBACKS.BUY_BIG, async (ctx) => {
+  await handleCreditPackageSelection(ctx, 'big');
 });
-bot.callbackQuery(CALLBACKS.BUY_MEGA, async (ctx) => {
-  await handleCreditPackageSelection(ctx, 'mega');
+bot.callbackQuery(CALLBACKS.BUY_ENTERPRISE, async (ctx) => {
+  await handleCreditPackageSelection(ctx, 'enterprise');
 });
 
 // Payment callbacks

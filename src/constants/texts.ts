@@ -1,3 +1,16 @@
+// Custom Emoji IDs - Get these by sending custom emoji to @RawDataBot in Telegram
+// Replace with your own emoji IDs
+export const CUSTOM_EMOJI = {
+  SUCCESS: '5368324170671202286', // Example: green checkmark
+  FIRE: '5368324170671202286',    // Example: fire emoji
+  SPARKLES: '5368324170671202286', // Example: sparkles
+  GIFT: '5368324170671202286',     // Example: gift box
+};
+
+// Helper to create custom emoji tag
+export const customEmoji = (id: string, fallback: string) => 
+  `<tg-emoji emoji-id="${id}">${fallback}</tg-emoji>`;
+
 export const TEXTS = {
   // Main Menu
   WELCOME: `<b>MerchantAI здесь.</b>
@@ -16,12 +29,12 @@ export const TEXTS = {
 
 🎁 В честь праздников даем бесплатные токены новым пользователям.
 
-Запускай и пробуй прямо сейчас 👇`,
+Запускай и пробуй прямо сейчас <tg-emoji emoji-id="5386810955453728741">👇</tg-emoji>`,
 
   // Buttons
   BTN_IMAGE_CARD: '🎨 Создать карточку',
-  //BTN_IMAGE_EDIT: '✏️ Изменить изображение',
-  //BTN_PHOTO_SESSION: '📸 Фотосессия товара',
+  BTN_IMAGE_EDIT: '✏️ Изменить изображение',
+  BTN_PHOTO_SESSION: '📸 Фотосессия товара',
   BTN_MY_PROFILE: '👤 Мой профиль',
   BTN_SUPPORT: '💬 Поддержка',
   BTN_BUY_CREDITS: '💳 Купить кредиты',
@@ -35,13 +48,13 @@ export const TEXTS = {
   IMAGE_CARD_SEND_PHOTO: `📤 Отправьте фото товара
 
 Фото будет использовано для создания карточки.
-После отправки фото вы сможете добавить описание (опционально).`,
+После отправки фото вы сможете добавить описание.`,
   IMAGE_CARD_PHOTO_RECEIVED: `✅ Фото получено!
 
 Теперь отправьте текстовое описание/промпт для карточки.
 Опишите желаемый стиль, фон, настроение изображения.`,
   IMAGE_CARD_WAIT: '⏳ Генерирую карточку...\n\nЭто займёт 30-60 секунд.',
-  IMAGE_CARD_READY: '✅ Ваша карточка готова!',
+  IMAGE_CARD_READY: '<tg-emoji emoji-id="5199610880257435665">✅</tg-emoji> Ваша карточка готова!',
   IMAGE_CARD_SESSION_OPTIONS: `Что дальше?
 
 • Отправьте новый промпт для генерации
@@ -118,8 +131,7 @@ export const TEXTS = {
   BUY_CREDITS_TITLE: '💳 Покупка кредитов',
   BUY_CREDITS_DESC: `Выберите пакет кредитов:
 
-💡 4 кредита = 1 генерация карточки
-❗️ 2 кредита = 1 изменение карточки`,
+💡 1 кредит = 1 генерация карточки`,
   BUY_CREDITS_PAYMENT_WAIT: '⏳ Переходим к оплате...',
   BUY_CREDITS_PAYMENT_SUCCESS: '✅ Оплата прошла успешно! Кредиты зачислены.',
   BUY_CREDITS_PAYMENT_CANCELLED: '❌ Оплата отменена.',
@@ -149,12 +161,10 @@ export const CALLBACKS = {
 
   // Image generation session
   REGENERATE: 'regenerate',
-  CHANGE_PROMPT: 'change_prompt',
   BACK_TO_MENU: 'back_to_menu',
 
   // Image edit session
   EDIT_REGENERATE: 'edit_regenerate',
-  EDIT_CHANGE_PROMPT: 'edit_change_prompt',
 
   // Profile
   PROFILE_BUY_CREDITS: 'profile_buy_credits',
@@ -165,10 +175,10 @@ export const CALLBACKS = {
   SUPPORT_CONTACT: 'support_contact',
 
   // Credit packages
-  BUY_SMALL: 'buy_small',
-  BUY_MEDIUM: 'buy_medium',
-  BUY_LARGE: 'buy_large',
-  BUY_MEGA: 'buy_mega',
+  BUY_STARTER: 'buy_starter',
+  BUY_PRO: 'buy_pro',
+  BUY_BIG: 'buy_big',
+  BUY_ENTERPRISE: 'buy_enterprise',
 
   // Payment
   PAYMENT_CHECK: 'payment_check',

@@ -4,34 +4,46 @@ import { KeyboardBuilder } from '../utils/keyboards';
 import { MessageManager } from '../utils/helpers';
 import { supabase } from '../services/supabase';
 import { yookassa } from '../services/yookassa';
+import { notificationBot } from '../services/notificationBot';
 
 export async function handleBuyCredits(ctx: MyContext, editMessage = false): Promise<void> {
   await MessageManager.cleanup(ctx);
 
-  const creditsText = `${TEXTS.BUY_CREDITS_TITLE}
+  const starter = CREDIT_PACKAGES.starter;
+  const pro = CREDIT_PACKAGES.pro;
+  const big = CREDIT_PACKAGES.big;
 
-${TEXTS.BUY_CREDITS_DESC}
+  const creditsText = `<b>Тарифы</b>
 
-💚 *Малый пакет* - 20 кредитов за 290₽
-💙 *Средний пакет* - 50 кредитов за 590₽ (+10% бонус)
-💜 *Большой пакет* - 150 кредитов за 1490₽ (+20% бонус)
-🧡 *Мега пакет* - 500 кредитов за 3990₽ (+30% бонус)`;
+<b>${starter.name}</b> — ${starter.price} ₽
+${starter.cardsCount} генераций · ${starter.credits} токенов · ${starter.pricePerCard} ₽/шт
+
+<b>${pro.name}</b> — ${pro.price} ₽ ⭐
+${pro.cardsCount} генераций · ${pro.credits} токенов · ${pro.pricePerCard} ₽/шт
+
+<b>${big.name}</b> — ${big.price} ₽
+${big.cardsCount} генераций · ${big.credits} токенов · ${big.pricePerCard} ₽/шт
+
+<b>Enterprise</b> — от 10 000 ₽
+Индивидуальные условия
+
+<i>4 токена = генерация · 2 токена = редактирование</i>`;
 
   if (editMessage && ctx.callbackQuery?.message) {
     try {
       await ctx.editMessageText(creditsText, {
-        parse_mode: 'Markdown',
+        parse_mode: 'HTML',
         reply_markup: KeyboardBuilder.creditPackages(),
       });
     } catch {
       await ctx.reply(creditsText, {
-        parse_mode: 'Markdown',
+        parse_mode: 'HTML',
         reply_markup: KeyboardBuilder.creditPackages(),
       });
     }
   } else {
     await ctx.reply(creditsText, {
-      parse_mode: 'Markdown',
+      parse_mode: 'HTML',
       reply_markup: KeyboardBuilder.creditPackages(),
     });
   }
@@ -49,6 +61,33 @@ export async function handleCreditPackageSelection(
   }
 
   await ctx.answerCallbackQuery();
+
+  // Handle Enterprise separately - redirect to support
+  if (packageId === 'enterprise') {
+    if (ctx.callbackQuery?.message) {
+      try {
+        await ctx.api.deleteMessage(ctx.chat!.id, ctx.callbackQuery.message.message_id);
+      } catch {}
+    }
+
+    const enterpriseText = `🚀 <b>ENTERPRISE тариф</b>
+
+Индивидуальные условия для вашего бизнеса:
+
+✅ Персональные лимиты токенов
+✅ API доступ и интеграции
+✅ Приоритетная поддержка
+✅ Персональный менеджер
+
+💬 Для оформления напишите нам:
+@leomishinbiz`;
+
+    await ctx.reply(enterpriseText, {
+      parse_mode: 'HTML',
+      reply_markup: KeyboardBuilder.backToMenu(),
+    });
+    return;
+  }
 
   // Get user
   const user = await supabase.getUser(ctx.from!.id);
@@ -78,7 +117,7 @@ export async function handleCreditPackageSelection(
     const yooPayment = await yookassa.createPayment({
       amount: creditPackage.price,
       currency: 'RUB',
-      description: `${creditPackage.name} - ${creditPackage.credits} кредитов`,
+      description: `${creditPackage.emoji} ${creditPackage.name} — ~${creditPackage.cardsCount} карточек`,
       returnUrl: `https://t.me/${ctx.me.username}`,
       metadata: {
         payment_id: payment.id,
@@ -96,18 +135,18 @@ export async function handleCreditPackageSelection(
     // Delete processing message
     await MessageManager.deleteProcessing(ctx);
 
-    // Send payment link
-    const paymentText = `💳 *Покупка кредитов*
+    // Send payment link - clean design
+    const paymentText = `<b>Оплата</b>
 
-📦 Пакет: ${creditPackage.name}
-💰 Сумма: ${creditPackage.price} ₽
-💳 Кредитов: ${creditPackage.credits}
+${creditPackage.name} — ${creditPackage.price} ₽
+${creditPackage.credits} токенов · ${creditPackage.cardsCount} генераций
 
-Нажмите кнопку "Оплатить" и следуйте инструкциям.
-После оплаты нажмите "Я оплатил" для проверки статуса.`;
+1. Нажмите «Оплатить»
+2. Завершите оплату
+3. Нажмите «Проверить оплату»`;
 
     await ctx.reply(paymentText, {
-      parse_mode: 'Markdown',
+      parse_mode: 'HTML',
       reply_markup: KeyboardBuilder.paymentConfirm(yooPayment.confirmation.confirmation_url),
     });
 
@@ -162,6 +201,17 @@ export async function handlePaymentCheck(ctx: MyContext): Promise<void> {
 
       // Add credits to user
       await supabase.updateUserCredits(user.id, creditsToAdd);
+
+      // Send notification about purchase
+      const creditPackage = CREDIT_PACKAGES[paymentData.packageId];
+      await notificationBot.notifyPurchase(
+        user.id,
+        ctx.from?.username,
+        creditPackage?.name || paymentData.packageId,
+        creditsToAdd,
+        creditPackage?.price || 0,
+        'RUB'
+      );
 
       // Delete payment message
       if (ctx.callbackQuery?.message) {

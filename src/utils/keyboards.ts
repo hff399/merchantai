@@ -7,9 +7,9 @@ export class KeyboardBuilder {
   static mainMenu(): InlineKeyboard {
     return new InlineKeyboard()
       .text(TEXTS.BTN_IMAGE_CARD, CALLBACKS.IMAGE_CARD)
-      //.text(TEXTS.BTN_IMAGE_EDIT, CALLBACKS.IMAGE_EDIT)
-      //.row()
-      //.text(TEXTS.BTN_PHOTO_SESSION, CALLBACKS.PHOTO_SESSION)
+      .text(TEXTS.BTN_IMAGE_EDIT, CALLBACKS.IMAGE_EDIT)
+      .row()
+      .text(TEXTS.BTN_PHOTO_SESSION, CALLBACKS.PHOTO_SESSION)
       .row()
       .text(TEXTS.BTN_MY_PROFILE, CALLBACKS.PROFILE)
       .text(TEXTS.BTN_SUPPORT, CALLBACKS.SUPPORT)
@@ -27,13 +27,12 @@ export class KeyboardBuilder {
     return new InlineKeyboard().text(TEXTS.BTN_MAIN_MENU, CALLBACKS.BACK_TO_MENU);
   }
 
-  // Image card - photo received, waiting for prompt (prompt is mandatory)
+  // Image card - photo received, waiting for prompt
   static imageCardPhotoReceived(): InlineKeyboard {
-    return new InlineKeyboard()
-      .text(TEXTS.BTN_MAIN_MENU, CALLBACKS.BACK_TO_MENU);
+    return new InlineKeyboard().text(TEXTS.BTN_MAIN_MENU, CALLBACKS.BACK_TO_MENU);
   }
 
-  // Image card session - after generation (user can send text directly or go back)
+  // Image card session - after generation
   static imageCardSession(): InlineKeyboard {
     return new InlineKeyboard()
       .text('🔁 Повторить с тем же промптом', CALLBACKS.REGENERATE)
@@ -46,17 +45,22 @@ export class KeyboardBuilder {
     return new InlineKeyboard().text(TEXTS.BTN_MAIN_MENU, CALLBACKS.BACK_TO_MENU);
   }
 
-  // Image edit - photo received, waiting for prompt (prompt required for edit)
+  // Image edit - photo received, waiting for prompt
   static imageEditPhotoReceived(): InlineKeyboard {
     return new InlineKeyboard().text(TEXTS.BTN_MAIN_MENU, CALLBACKS.BACK_TO_MENU);
   }
 
-  // Image edit session - after editing (user can send text directly or go back)
+  // Image edit session - after editing
   static imageEditSession(): InlineKeyboard {
     return new InlineKeyboard()
       .text('🔁 Повторить с тем же промптом', CALLBACKS.EDIT_REGENERATE)
       .row()
       .text(TEXTS.BTN_MAIN_MENU, CALLBACKS.BACK_TO_MENU);
+  }
+
+  // Photo session - waiting for photo
+  static photoSessionWaiting(): InlineKeyboard {
+    return new InlineKeyboard().text(TEXTS.BTN_MAIN_MENU, CALLBACKS.BACK_TO_MENU);
   }
 
   // Profile actions - inline
@@ -77,21 +81,20 @@ export class KeyboardBuilder {
       .text(TEXTS.BTN_MAIN_MENU, CALLBACKS.BACK_TO_MENU);
   }
 
-  // Credit packages selection - inline
+  // Credit packages selection - clean design
   static creditPackages(): InlineKeyboard {
-    const small = CREDIT_PACKAGES.small;
-    const medium = CREDIT_PACKAGES.medium;
-    const large = CREDIT_PACKAGES.large;
-    const mega = CREDIT_PACKAGES.mega;
+    const starter = CREDIT_PACKAGES.starter;
+    const pro = CREDIT_PACKAGES.pro;
+    const big = CREDIT_PACKAGES.big;
 
     return new InlineKeyboard()
-      .text(`💚 ${small.credits} кред. - ${small.price}₽`, CALLBACKS.BUY_SMALL)
+      .text(`${starter.name} · ${starter.price} ₽`, CALLBACKS.BUY_STARTER)
       .row()
-      .text(`💙 ${medium.credits} кред. - ${medium.price}₽`, CALLBACKS.BUY_MEDIUM)
+      .text(`${pro.name} · ${pro.price} ₽ ⭐`, CALLBACKS.BUY_PRO)
       .row()
-      .text(`💜 ${large.credits} кред. - ${large.price}₽`, CALLBACKS.BUY_LARGE)
+      .text(`${big.name} · ${big.price} ₽`, CALLBACKS.BUY_BIG)
       .row()
-      .text(`🧡 ${mega.credits} кред. - ${mega.price}₽`, CALLBACKS.BUY_MEGA)
+      .text(`Enterprise · от 10 000 ₽`, CALLBACKS.BUY_ENTERPRISE)
       .row()
       .text(TEXTS.BTN_MAIN_MENU, CALLBACKS.BACK_TO_MENU);
   }
@@ -101,14 +104,9 @@ export class KeyboardBuilder {
     return new InlineKeyboard()
       .url('💳 Оплатить', paymentUrl)
       .row()
-      .text('✅ Я оплатил', CALLBACKS.PAYMENT_CHECK)
+      .text('✅ Проверить оплату', CALLBACKS.PAYMENT_CHECK)
       .row()
-      .text(TEXTS.BTN_CANCEL, CALLBACKS.PAYMENT_CANCEL);
-  }
-
-  // Photo session
-  static photoSessionWaiting(): InlineKeyboard {
-    return new InlineKeyboard().text(TEXTS.BTN_MAIN_MENU, CALLBACKS.BACK_TO_MENU);
+      .text('❌ Отмена', CALLBACKS.PAYMENT_CANCEL);
   }
 
   // Simple back button

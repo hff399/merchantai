@@ -7,7 +7,7 @@ import { n8n } from '../services/n8n';
 import { InputFile } from 'grammy';
 import { v4 as uuidv4 } from 'uuid';
 
-const IMAGE_EDIT_COST = 4; // Credits per edit
+const IMAGE_EDIT_COST = 2; // Credits per edit (half of generation)
 
 // Initialize image edit flow
 export async function handleImageEdit(ctx: MyContext, editMessage = false): Promise<void> {
@@ -16,23 +16,24 @@ export async function handleImageEdit(ctx: MyContext, editMessage = false): Prom
   // Initialize session with unique ID for n8n/ChatGPT memory
   ctx.session.currentRoute = ROUTES.IMAGE_EDIT_WAITING_PHOTO;
   ctx.session.imageEditSession = {
-    sessionId: uuidv4(), // Generate unique session ID
+    sessionId: uuidv4(),
     editCount: 0,
   };
 
+  const text = `${TEXTS.IMAGE_EDIT_TITLE}\n\n${TEXTS.IMAGE_EDIT_SEND_PHOTO}`;
+
   if (editMessage && ctx.callbackQuery?.message) {
     try {
-      await ctx.editMessageText(
-        `${TEXTS.IMAGE_EDIT_TITLE}\n\n${TEXTS.IMAGE_EDIT_SEND_PHOTO}`,
-        { reply_markup: KeyboardBuilder.imageEditWaitingPhoto() }
-      );
+      await ctx.editMessageText(text, {
+        reply_markup: KeyboardBuilder.imageEditWaitingPhoto(),
+      });
     } catch {
-      await ctx.reply(`${TEXTS.IMAGE_EDIT_TITLE}\n\n${TEXTS.IMAGE_EDIT_SEND_PHOTO}`, {
+      await ctx.reply(text, {
         reply_markup: KeyboardBuilder.imageEditWaitingPhoto(),
       });
     }
   } else {
-    await ctx.reply(`${TEXTS.IMAGE_EDIT_TITLE}\n\n${TEXTS.IMAGE_EDIT_SEND_PHOTO}`, {
+    await ctx.reply(text, {
       reply_markup: KeyboardBuilder.imageEditWaitingPhoto(),
     });
   }
@@ -40,52 +41,39 @@ export async function handleImageEdit(ctx: MyContext, editMessage = false): Prom
 
 // Handle photo upload for editing
 export async function handleImageEditPhoto(ctx: MyContext): Promise<void> {
-  // Check for photo
-  if (!ctx.message?.photo || ctx.message.photo.length === 0) {
-    await ctx.reply(TEXTS.ERROR_NO_PHOTO);
+  const photo = ctx.message?.photo;
+  if (!photo || photo.length === 0) {
+    await ctx.reply('Пожалуйста, отправьте изображение.');
     return;
   }
 
-  // Get user and check credits
-  const user = await supabase.getUser(ctx.from!.id);
-  if (!user) {
-    await ctx.reply(TEXTS.ERROR_GENERAL);
-    return;
+  // Initialize session if not exists
+  if (!ctx.session.imageEditSession) {
+    ctx.session.imageEditSession = {
+      sessionId: uuidv4(),
+      editCount: 0,
+    };
   }
 
-  if (user.credits < IMAGE_EDIT_COST) {
-    await ctx.reply(TEXTS.IMAGE_CARD_NO_CREDITS, {
-      reply_markup: KeyboardBuilder.creditPackages(),
-    });
-    return;
-  }
+  const session = ctx.session.imageEditSession;
 
-  // Get photo info
-  const photo = ctx.message.photo[ctx.message.photo.length - 1];
-  const file = await ctx.api.getFile(photo.file_id);
+  // Get the largest photo
+  const largestPhoto = photo[photo.length - 1];
+
+  // Get file URL from Telegram
+  const file = await ctx.api.getFile(largestPhoto.file_id);
   const photoUrl = `https://api.telegram.org/file/bot${ctx.api.token}/${file.file_path}`;
 
   // Store in session
-  if (!ctx.session.imageEditSession) {
-    ctx.session.imageEditSession = { 
-      sessionId: uuidv4(),
-      editCount: 0 
-    };
-  }
-  ctx.session.imageEditSession.photoUrl = photoUrl;
-  ctx.session.imageEditSession.photoFileId = photo.file_id;
+  session.photoUrl = photoUrl;
+  session.photoFileId = largestPhoto.file_id;
 
-  // If there was a caption, use it as prompt and process immediately
-  if (ctx.message.caption && ctx.message.caption.trim()) {
-    ctx.session.imageEditSession.prompt = ctx.message.caption.trim();
-    await processImageEdit(ctx, user.id);
-  } else {
-    // Ask for prompt (required for edit)
-    ctx.session.currentRoute = ROUTES.IMAGE_EDIT_WAITING_PROMPT;
-    await ctx.reply(TEXTS.IMAGE_EDIT_PHOTO_RECEIVED, {
-      reply_markup: KeyboardBuilder.imageEditPhotoReceived(),
-    });
-  }
+  // Update route
+  ctx.session.currentRoute = ROUTES.IMAGE_EDIT_WAITING_PROMPT;
+
+  await ctx.reply(TEXTS.IMAGE_EDIT_PHOTO_RECEIVED, {
+    reply_markup: KeyboardBuilder.imageEditPhotoReceived(),
+  });
 }
 
 // Handle prompt text for editing
@@ -129,7 +117,9 @@ export async function handleEditRegenerate(ctx: MyContext): Promise<void> {
     await ctx.answerCallbackQuery();
   }
 
-  if (!ctx.session.imageEditSession?.photoUrl || !ctx.session.imageEditSession?.prompt) {
+  const session = ctx.session.imageEditSession;
+
+  if (!session?.photoUrl || !session.prompt) {
     await ctx.reply('Нет данных для обработки. Начните сначала.', {
       reply_markup: KeyboardBuilder.backToMenu(),
     });
@@ -157,7 +147,7 @@ export async function handleEditRegenerate(ctx: MyContext): Promise<void> {
 // Main edit processing function
 async function processImageEdit(ctx: MyContext, userId: string): Promise<void> {
   const session = ctx.session.imageEditSession;
-  if (!session?.photoUrl || !session?.prompt) {
+  if (!session?.photoUrl || !session.prompt) {
     await ctx.reply(TEXTS.ERROR_GENERAL);
     return;
   }
@@ -183,13 +173,13 @@ async function processImageEdit(ctx: MyContext, userId: string): Promise<void> {
     // Update order status
     await supabase.updateOrder(order.id, { status: 'processing' });
 
-    // Call n8n to edit image (using image-card endpoint with edit mode)
+    // Call n8n to edit image
     const result = await n8n.editImage({
       photoUrl: session.photoUrl,
       description: session.prompt,
       userId: userId,
       orderId: order.id,
-      sessionId: session.sessionId, // Pass session ID for ChatGPT memory
+      sessionId: session.sessionId,
     });
 
     // Delete processing message
@@ -197,24 +187,31 @@ async function processImageEdit(ctx: MyContext, userId: string): Promise<void> {
 
     if (result.success && result.buffer && result.buffer.length > 0) {
       // Store result in session
-      session.lastEditedImage = Buffer.from(result.buffer);
+      const imageBuffer = Buffer.from(result.buffer);
+      session.lastEditedImage = imageBuffer;
       session.editCount++;
+
+      // Upload to Supabase Storage
+      const imageUrl = await supabase.uploadImage(imageBuffer, userId, order.id, 'edit');
 
       // Send result with session options
       await ctx.replyWithPhoto(new InputFile(result.buffer, 'edited.jpg'), {
         caption: `${TEXTS.IMAGE_EDIT_READY}\n\n${TEXTS.IMAGE_EDIT_SESSION_OPTIONS}`,
+        parse_mode: 'HTML',
         reply_markup: KeyboardBuilder.imageEditSession(),
       });
 
-      // Update database
+      // Update database with image URL
       await supabase.updateOrder(order.id, {
         status: 'completed',
-        output_data: { images: result.images },
+        output_data: {
+          images: result.images,
+          generated_image_url: imageUrl,
+        },
       });
 
-      // Deduct credits and increment counter
+      // Deduct credits
       await supabase.updateUserCredits(userId, -IMAGE_EDIT_COST);
-      await supabase.incrementCardsCreated(userId);
     } else {
       await ctx.reply(TEXTS.IMAGE_EDIT_ERROR, {
         reply_markup: KeyboardBuilder.imageEditSession(),
