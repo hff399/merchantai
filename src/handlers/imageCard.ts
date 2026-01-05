@@ -95,6 +95,7 @@ export async function handleImageCardPhoto(ctx: MyContext): Promise<void> {
   ctx.session.currentRoute = ROUTES.IMAGE_CARD_WAITING_PROMPT;
 
   await ctx.reply(TEXTS.IMAGE_CARD_PHOTO_RECEIVED, {
+    parse_mode: "HTML",
     reply_markup: KeyboardBuilder.imageCardPhotoReceived(),
   });
 }
