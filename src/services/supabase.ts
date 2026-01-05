@@ -34,7 +34,7 @@ class SupabaseService {
       const timestamp = Date.now();
       const fileName = `${type}/${userId}/${orderId}_${timestamp}.jpg`;
 
-      const { data, error } = await this.client.storage
+      const { error } = await this.client.storage
         .from(this.bucketName)
         .upload(fileName, buffer, {
           contentType: 'image/jpeg',
