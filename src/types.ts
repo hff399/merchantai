@@ -9,6 +9,23 @@ export interface User {
   plan: 'free' | 'starter' | 'pro' | 'business';
   credits: number;
   cards_created: number;
+  // Referral fields
+  referral_code?: string;
+  referred_by?: string;
+  referrals_count?: number;
+  referral_earnings?: number;
+  // UTM tracking
+  utm_source?: string;
+  utm_campaign?: string;
+  utm_medium?: string;
+  start_param?: string;
+  // Admin fields
+  total_spent?: number;
+  is_blocked?: boolean;
+  is_admin?: boolean;
+  notes?: string;
+  tags?: string[];
+  // Timestamps
   created_at: string;
   updated_at: string;
 }

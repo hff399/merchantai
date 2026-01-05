@@ -16,13 +16,13 @@ export async function handleBuyCredits(ctx: MyContext, editMessage = false): Pro
   const creditsText = `<b>Тарифы</b>
 
 <b>${starter.name}</b> — ${starter.price} ₽
-${starter.cardsCount} генераций · ${starter.credits} токенов · ${starter.pricePerCard} ₽/шт
+${starter.cardsCount} генераций · ${starter.pricePerCard} ₽/шт
 
 <b>${pro.name}</b> — ${pro.price} ₽ ⭐
-${pro.cardsCount} генераций · ${pro.credits} токенов · ${pro.pricePerCard} ₽/шт
+${pro.cardsCount} генераций · ${pro.pricePerCard} ₽/шт
 
 <b>${big.name}</b> — ${big.price} ₽
-${big.cardsCount} генераций · ${big.credits} токенов · ${big.pricePerCard} ₽/шт
+${big.cardsCount} генераций · ${big.pricePerCard} ₽/шт
 
 <b>Enterprise</b> — от 10 000 ₽
 Индивидуальные условия
@@ -78,9 +78,12 @@ export async function handleCreditPackageSelection(
 ✅ API доступ и интеграции
 ✅ Приоритетная поддержка
 ✅ Персональный менеджер
+✅ SLA и гарантии
 
 💬 Для оформления напишите нам:
-@leomishinbiz`;
+@MerchantAI_Support
+
+Или оставьте заявку, и мы свяжемся с вами!`;
 
     await ctx.reply(enterpriseText, {
       parse_mode: 'HTML',

@@ -49,7 +49,10 @@ bot.catch((err) => {
 
 // Command handlers
 bot.command('start', async (ctx) => {
-  await showMainMenu(ctx);
+  // Extract start parameter for referral tracking
+  // Format: /start ref_XXXXXXXX or /start utm_source=xxx
+  const startParam = ctx.match;
+  await showMainMenu(ctx, false, startParam || undefined);
 });
 
 bot.command('menu', async (ctx) => {

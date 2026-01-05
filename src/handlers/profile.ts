@@ -3,42 +3,70 @@ import { TEXTS } from '../constants/texts';
 import { KeyboardBuilder } from '../utils/keyboards';
 import { MessageManager, formatDate } from '../utils/helpers';
 import { supabase } from '../services/supabase';
+import { config } from '../config';
 
 export async function handleProfile(ctx: MyContext, editMessage = false): Promise<void> {
   await MessageManager.cleanup(ctx);
 
-  // Get user from database
-  const user = await supabase.getUser(ctx.from!.id);
+  try {
+    // Get user from database
+    const user = await supabase.getUser(ctx.from!.id);
 
-  if (!user) {
-    await ctx.reply(TEXTS.ERROR_GENERAL, {
-      reply_markup: KeyboardBuilder.mainMenu(),
-    });
-    return;
-  }
-
-  // Format profile information
-  const profileText = TEXTS.PROFILE_INFO
-    .replace('{name}', user.first_name || user.username || 'Пользователь')
-    .replace('{date}', formatDate(user.created_at))
-    .replace('{credits}', user.credits.toString())
-    .replace('{cardsCreated}', user.cards_created.toString());
-
-  const fullText = `${TEXTS.PROFILE_TITLE}\n\n${profileText}`;
-
-  if (editMessage && ctx.callbackQuery?.message) {
-    try {
-      await ctx.editMessageText(fullText, {
-        reply_markup: KeyboardBuilder.profileActions(),
+    if (!user) {
+      await ctx.reply(TEXTS.ERROR_GENERAL, {
+        reply_markup: KeyboardBuilder.mainMenu(),
       });
-    } catch {
-      await ctx.reply(fullText, {
+      return;
+    }
+
+    // Get referral stats (with safe defaults)
+    const referralStats = await supabase.getReferralStats(user.id);
+    
+    // Build bot username for referral link
+    const botUsername = ctx.me?.username || 'MerchantAIBot';
+    const referralCode = referralStats.referralCode || user.id.substring(0, 8);
+    const referralLink = `https://t.me/${botUsername}?start=ref_${referralCode}`;
+
+    // Format profile information
+    const profileText = `<b>Профиль</b>
+
+Имя: ${user.first_name || user.username || 'Пользователь'}
+Дата регистрации: ${formatDate(user.created_at)}
+
+<b>Баланс:</b> ${user.credits || 0} токенов
+<b>Создано карточек:</b> ${user.cards_created || 0}
+
+<b>Реферальная программа</b>
+Приглашено: ${referralStats.referralsCount} чел.
+Заработано: ${referralStats.earnings} ₽
+
+Ваша ссылка:
+<code>${referralLink}</code>
+
+<i>Получайте 10% от покупок приглашённых!</i>`;
+
+    if (editMessage && ctx.callbackQuery?.message) {
+      try {
+        await ctx.editMessageText(profileText, {
+          parse_mode: 'HTML',
+          reply_markup: KeyboardBuilder.profileActions(),
+        });
+      } catch {
+        await ctx.reply(profileText, {
+          parse_mode: 'HTML',
+          reply_markup: KeyboardBuilder.profileActions(),
+        });
+      }
+    } else {
+      await ctx.reply(profileText, {
+        parse_mode: 'HTML',
         reply_markup: KeyboardBuilder.profileActions(),
       });
     }
-  } else {
-    await ctx.reply(fullText, {
-      reply_markup: KeyboardBuilder.profileActions(),
+  } catch (error) {
+    console.error('Profile error:', error);
+    await ctx.reply(TEXTS.ERROR_GENERAL, {
+      reply_markup: KeyboardBuilder.mainMenu(),
     });
   }
 }
@@ -57,12 +85,11 @@ export async function handleProfileHistory(ctx: MyContext): Promise<void> {
   const orders = await supabase.getUserOrders(user.id, 10);
 
   if (orders.length === 0) {
-    // Edit message to show empty history
     if (ctx.callbackQuery?.message) {
       await ctx.editMessageText(
-        '📜 *История заказов пуста*\n\nВы ещё не создавали карточки.',
+        '<b>История заказов пуста</b>\n\nВы ещё не создавали карточки.',
         {
-          parse_mode: 'Markdown',
+          parse_mode: 'HTML',
           reply_markup: KeyboardBuilder.profileActions(),
         }
       );
@@ -71,7 +98,7 @@ export async function handleProfileHistory(ctx: MyContext): Promise<void> {
   }
 
   // Format history
-  let historyText = '📜 *История ваших заказов:*\n\n';
+  let historyText = '<b>История заказов</b>\n\n';
 
   orders.forEach((order) => {
     const emoji =
@@ -87,13 +114,12 @@ export async function handleProfileHistory(ctx: MyContext): Promise<void> {
           : 'Фотосессия';
 
     historyText += `${emoji} ${status} ${date}\n`;
-    historyText += `Тип: ${typeName} | Кредитов: ${order.credits_used}\n\n`;
+    historyText += `${typeName} · ${order.credits_used} токенов\n\n`;
   });
 
-  // Edit message to show history
   if (ctx.callbackQuery?.message) {
     await ctx.editMessageText(historyText, {
-      parse_mode: 'Markdown',
+      parse_mode: 'HTML',
       reply_markup: KeyboardBuilder.profileActions(),
     });
   }

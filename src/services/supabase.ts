@@ -2,9 +2,17 @@ import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { config } from '../config';
 import { User, Order, Payment } from '../types';
 
+interface ReferralParams {
+  referralCode?: string;
+  utmSource?: string;
+  utmCampaign?: string;
+  utmMedium?: string;
+  startParam?: string;
+}
+
 class SupabaseService {
   private client: SupabaseClient;
-  private bucketName = 'generated-images'; // Create this bucket in Supabase
+  private bucketName = 'generated-images';
 
   constructor() {
     this.client = createClient(config.supabase.url, config.supabase.serviceRoleKey, {
@@ -38,7 +46,6 @@ class SupabaseService {
         return null;
       }
 
-      // Get public URL
       const { data: urlData } = this.client.storage
         .from(this.bucketName)
         .getPublicUrl(fileName);
@@ -59,7 +66,23 @@ class SupabaseService {
       .single();
 
     if (error) {
-      if (error.code === 'PGRST116') return null; // Not found
+      if (error.code === 'PGRST116') return null;
+      throw error;
+    }
+
+    return data;
+  }
+
+  // Find user by referral code
+  async getUserByReferralCode(code: string): Promise<User | null> {
+    const { data, error } = await this.client
+      .from('users')
+      .select('*')
+      .eq('referral_code', code.toLowerCase())
+      .single();
+
+    if (error) {
+      if (error.code === 'PGRST116') return null;
       throw error;
     }
 
@@ -70,18 +93,47 @@ class SupabaseService {
     telegramId: number,
     username?: string,
     firstName?: string,
-    lastName?: string
+    lastName?: string,
+    referralParams?: ReferralParams
   ): Promise<User> {
+    // Find referrer if referral code provided
+    let referrerId: string | null = null;
+    
+    if (referralParams?.referralCode) {
+      try {
+        const referrer = await this.getUserByReferralCode(referralParams.referralCode);
+        if (referrer) {
+          referrerId = referrer.id;
+          // Increment referrer's count
+          await this.client
+            .from('users')
+            .update({ 
+              referrals_count: (referrer.referrals_count || 0) + 1,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', referrer.id);
+        }
+      } catch (err) {
+        console.error('Error finding referrer:', err);
+        // Continue without referrer
+      }
+    }
+
     const { data, error } = await this.client
       .from('users')
       .insert({
         telegram_id: telegramId,
-        username,
-        first_name: firstName,
-        last_name: lastName,
+        username: username || null,
+        first_name: firstName || null,
+        last_name: lastName || null,
         plan: 'free',
-        credits: 12, // Free trial credits
+        credits: 12,
         cards_created: 0,
+        referred_by: referrerId,
+        utm_source: referralParams?.utmSource || null,
+        utm_campaign: referralParams?.utmCampaign || null,
+        utm_medium: referralParams?.utmMedium || null,
+        start_param: referralParams?.startParam || null,
       })
       .select()
       .single();
@@ -116,7 +168,70 @@ class SupabaseService {
   }
 
   async incrementCardsCreated(userId: string): Promise<void> {
-    await this.client.rpc('increment_cards_created', { user_id: userId });
+    try {
+      // Try using the RPC function first
+      const { error: rpcError } = await this.client.rpc('increment_cards_created', { p_user_id: userId });
+      
+      if (rpcError) {
+        console.error('RPC increment_cards_created error:', rpcError);
+        // Fallback: direct update
+        const { data: user } = await this.client
+          .from('users')
+          .select('cards_created')
+          .eq('id', userId)
+          .single();
+        
+        if (user) {
+          await this.client
+            .from('users')
+            .update({ 
+              cards_created: (user.cards_created || 0) + 1,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', userId);
+        }
+      }
+    } catch (err) {
+      console.error('incrementCardsCreated error:', err);
+      // Silent fail - not critical
+    }
+  }
+
+  // Get user's referral stats
+  async getReferralStats(userId: string): Promise<{
+    referralCode: string;
+    referralsCount: number;
+    earnings: number;
+  }> {
+    try {
+      const { data, error } = await this.client
+        .from('users')
+        .select('referral_code, referrals_count, referral_earnings')
+        .eq('id', userId)
+        .single();
+
+      if (error) {
+        console.error('getReferralStats error:', error);
+        return { referralCode: '', referralsCount: 0, earnings: 0 };
+      }
+
+      return {
+        referralCode: data?.referral_code || '',
+        referralsCount: data?.referrals_count || 0,
+        earnings: Number(data?.referral_earnings) || 0,
+      };
+    } catch (err) {
+      console.error('getReferralStats error:', err);
+      return { referralCode: '', referralsCount: 0, earnings: 0 };
+    }
+  }
+
+  // Process referral commission after payment
+  async processReferralCommission(paymentId: string, commissionPercent = 10): Promise<void> {
+    await this.client.rpc('process_referral_commission', {
+      p_payment_id: paymentId,
+      p_commission_percent: commissionPercent,
+    });
   }
 
   // Order operations
@@ -216,16 +331,17 @@ class SupabaseService {
     return data;
   }
 
-  // Get or create user
+  // Get or create user with referral tracking
   async getOrCreateUser(
     telegramId: number,
     username?: string,
     firstName?: string,
-    lastName?: string
+    lastName?: string,
+    referralParams?: ReferralParams
   ): Promise<User> {
     let user = await this.getUser(telegramId);
     if (!user) {
-      user = await this.createUser(telegramId, username, firstName, lastName);
+      user = await this.createUser(telegramId, username, firstName, lastName, referralParams);
     }
     return user;
   }

@@ -7,7 +7,7 @@ export class KeyboardBuilder {
   static mainMenu(): InlineKeyboard {
     return new InlineKeyboard()
       .text(TEXTS.BTN_IMAGE_CARD, CALLBACKS.IMAGE_CARD)
-      //.text(TEXTS.BTN_IMAGE_EDIT, CALLBACKS.IMAGE_EDIT)
+     // .text(TEXTS.BTN_IMAGE_EDIT, CALLBACKS.IMAGE_EDIT)
       .row()
       //.text(TEXTS.BTN_PHOTO_SESSION, CALLBACKS.PHOTO_SESSION)
       //.row()
