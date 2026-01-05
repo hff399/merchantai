@@ -34,16 +34,16 @@ export async function handleProfile(ctx: MyContext, editMessage = false): Promis
 Дата регистрации: ${formatDate(user.created_at)}
 
 <b>Баланс:</b> ${user.credits || 0} токенов
-<b>Создано карточек:</b> ${user.cards_created || 0}
+<b>Создано карточек:</b> ${user.cards_created || 0}`;
 
-<b>Реферальная программа</b>
-Приглашено: ${referralStats.referralsCount} чел.
-Заработано: ${referralStats.earnings} ₽
+// <b>Реферальная программа</b>
+// Приглашено: ${referralStats.referralsCount} чел.
+// Заработано: ${referralStats.earnings} ₽
 
-Ваша ссылка:
-<code>${referralLink}</code>
+// Ваша ссылка:
+// <code>${referralLink}</code>
 
-<i>Получайте 10% от покупок приглашённых!</i>`;
+// <i>Получайте 10% от покупок приглашённых!</i>`;
 
     if (editMessage && ctx.callbackQuery?.message) {
       try {
