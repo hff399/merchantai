@@ -6,13 +6,9 @@ export async function POST(request: NextRequest) {
     const { groups } = await request.json();
 
     if (!Array.isArray(groups) || groups.length === 0) {
-      return NextResponse.json(
-        { error: 'Groups array is required' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Groups array is required' }, { status: 400 });
     }
 
-    // Add status to all groups
     const groupsWithStatus = groups.map(g => ({
       ...g,
       status: 'active',
@@ -24,18 +20,13 @@ export async function POST(request: NextRequest) {
       .select();
 
     if (error) {
-      return NextResponse.json(
-        { error: 'Failed to create groups' },
-        { status: 500 }
-      );
+      console.error('Bulk create error:', error);
+      return NextResponse.json({ error: 'Failed to create groups' }, { status: 500 });
     }
 
     return NextResponse.json({ success: true, count: data?.length || 0 });
   } catch (error) {
-    console.error('Bulk create groups error:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    console.error('Bulk create error:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

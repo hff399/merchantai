@@ -6,10 +6,7 @@ export async function POST(request: NextRequest) {
     const { groupId, status, category, notes } = await request.json();
 
     if (!groupId) {
-      return NextResponse.json(
-        { error: 'Group ID is required' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Group ID is required' }, { status: 400 });
     }
 
     const updates: any = { updated_at: new Date().toISOString() };
@@ -23,18 +20,13 @@ export async function POST(request: NextRequest) {
       .eq('id', groupId);
 
     if (error) {
-      return NextResponse.json(
-        { error: 'Failed to update group' },
-        { status: 500 }
-      );
+      console.error('Update group error:', error);
+      return NextResponse.json({ error: 'Failed to update' }, { status: 500 });
     }
 
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('Update group error:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

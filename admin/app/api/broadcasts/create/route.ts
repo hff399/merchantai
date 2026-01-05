@@ -1,122 +1,108 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
-import { sendBulkMessages } from '@/lib/telegram';
+import { sendTelegramMessage } from '@/lib/telegram';
 
 export async function POST(request: NextRequest) {
   try {
-    const { 
-      title, 
-      message, 
-      parseMode, 
-      targetType, 
-      targetTags,
-      targetUserIds,
-      sendNow 
-    } = await request.json();
+    const { title, message, parse_mode, target_type, target_tags, status, scheduled_at } = await request.json();
 
     if (!message) {
-      return NextResponse.json(
-        { error: 'Message is required' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Message is required' }, { status: 400 });
     }
 
-    // Get recipients based on target type
-    let query = supabaseAdmin
+    // Get recipient count
+    let recipientQuery = supabaseAdmin
       .from('users')
-      .select('id, telegram_id')
+      .select('id, telegram_id', { count: 'exact' })
       .eq('is_blocked', false);
 
-    if (targetType === 'segment' && targetTags?.length > 0) {
-      query = query.overlaps('tags', targetTags);
-    } else if (targetType === 'specific' && targetUserIds?.length > 0) {
-      query = query.in('id', targetUserIds);
+    if (target_type === 'tags' && target_tags?.length > 0) {
+      recipientQuery = recipientQuery.overlaps('tags', target_tags);
     }
 
-    const { data: recipients, error: recipientsError } = await query;
+    const { data: recipients, count } = await recipientQuery;
 
-    if (recipientsError) {
-      return NextResponse.json(
-        { error: 'Failed to fetch recipients' },
-        { status: 500 }
-      );
-    }
-
-    // Create broadcast record
-    const { data: broadcast, error: createError } = await supabaseAdmin
+    // Create broadcast
+    const { data: broadcast, error } = await supabaseAdmin
       .from('broadcasts')
       .insert({
         title,
         message,
-        message_html: parseMode === 'HTML' ? message : null,
-        parse_mode: parseMode,
-        target_type: targetType,
-        target_tags: targetTags || [],
-        target_user_ids: targetUserIds || [],
-        total_recipients: recipients?.length || 0,
-        status: sendNow ? 'sending' : 'draft',
+        parse_mode: parse_mode || 'HTML',
+        target_type,
+        target_tags,
+        total_recipients: count || 0,
+        status: status || 'draft',
+        scheduled_at: scheduled_at || null,
       })
       .select()
       .single();
 
-    if (createError) {
-      return NextResponse.json(
-        { error: 'Failed to create broadcast' },
-        { status: 500 }
-      );
+    if (error) {
+      console.error('Create broadcast error:', error);
+      return NextResponse.json({ error: 'Failed to create broadcast' }, { status: 500 });
     }
 
-    // If sendNow, start sending
-    if (sendNow && recipients && recipients.length > 0) {
-      // Create recipient records
+    // If sending now, start sending
+    if (status === 'sending' && recipients && recipients.length > 0) {
+      // Insert recipients
       const recipientRecords = recipients.map(r => ({
         broadcast_id: broadcast.id,
         user_id: r.id,
         status: 'pending',
       }));
 
-      await supabaseAdmin
-        .from('broadcast_recipients')
-        .insert(recipientRecords);
+      await supabaseAdmin.from('broadcast_recipients').insert(recipientRecords);
 
-      // Send messages (this runs in background for large lists)
-      const messages = recipients.map(r => ({
-        chat_id: r.telegram_id,
-        text: message,
-        parse_mode: parseMode as 'HTML' | 'Markdown',
-      }));
+      // Send in background (for small batches, send directly)
+      if (recipients.length <= 100) {
+        let sentCount = 0;
+        let failedCount = 0;
 
-      // For small lists, send immediately
-      if (messages.length <= 100) {
-        const result = await sendBulkMessages(messages);
+        for (const recipient of recipients) {
+          try {
+            await sendTelegramMessage(recipient.telegram_id, message, parse_mode);
+            await supabaseAdmin
+              .from('broadcast_recipients')
+              .update({ status: 'sent', sent_at: new Date().toISOString() })
+              .eq('broadcast_id', broadcast.id)
+              .eq('user_id', recipient.id);
+            sentCount++;
+          } catch (err: any) {
+            await supabaseAdmin
+              .from('broadcast_recipients')
+              .update({ status: 'failed', error_message: err.message })
+              .eq('broadcast_id', broadcast.id)
+              .eq('user_id', recipient.id);
+            failedCount++;
+          }
+          
+          // Small delay to avoid rate limits
+          await new Promise(resolve => setTimeout(resolve, 50));
+        }
 
         // Update broadcast status
         await supabaseAdmin
           .from('broadcasts')
           .update({
+            sent_count: sentCount,
+            failed_count: failedCount,
             status: 'completed',
-            sent_count: result.success,
-            failed_count: result.failed,
             completed_at: new Date().toISOString(),
           })
           .eq('id', broadcast.id);
       } else {
-        // For large lists, would need a background job
-        // For now, just mark as sending
-        // In production, use a queue like Bull or a serverless function
+        // For large batches, mark as sending and handle in background job
+        await supabaseAdmin
+          .from('broadcasts')
+          .update({ status: 'sending', started_at: new Date().toISOString() })
+          .eq('id', broadcast.id);
       }
     }
 
-    return NextResponse.json({ 
-      success: true, 
-      broadcastId: broadcast.id,
-      recipientCount: recipients?.length || 0,
-    });
+    return NextResponse.json({ success: true, broadcast });
   } catch (error) {
     console.error('Create broadcast error:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

@@ -1,26 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 
-export async function GET(request: NextRequest) {
+export async function POST(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url);
-    const targetType = searchParams.get('targetType') || 'all';
-    const tags = searchParams.get('tags')?.split(',').filter(Boolean) || [];
+    const { target_type, target_tags } = await request.json();
 
     let query = supabaseAdmin
       .from('users')
       .select('id', { count: 'exact', head: true })
       .eq('is_blocked', false);
 
-    if (targetType === 'segment' && tags.length > 0) {
-      query = query.overlaps('tags', tags);
+    if (target_type === 'tags' && target_tags?.length > 0) {
+      query = query.overlaps('tags', target_tags);
     }
 
-    const { count, error } = await query;
-
-    if (error) {
-      return NextResponse.json({ count: 0 });
-    }
+    const { count } = await query;
 
     return NextResponse.json({ count: count || 0 });
   } catch (error) {

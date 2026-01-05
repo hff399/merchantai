@@ -3,6 +3,7 @@ import { TEXTS, CALLBACKS } from '../constants/texts';
 import { KeyboardBuilder } from '../utils/keyboards';
 import { MessageManager } from '../utils/helpers';
 import { supabase } from '../services/supabase';
+import { InlineKeyboard } from 'grammy';
 
 // Parse start parameter for referral tracking
 // Formats supported:
@@ -54,7 +55,8 @@ function parseStartParam(startParam: string | undefined): {
 export async function showMainMenu(
   ctx: MyContext, 
   editMessage = false,
-  startParam?: string
+  startParam?: string,
+  fromStart = false
 ): Promise<void> {
   // Ensure user exists in database with referral tracking
   if (ctx.from) {
@@ -83,6 +85,12 @@ export async function showMainMenu(
   ctx.session.imageGenSession = undefined;
   ctx.session.imageEditSession = undefined;
 
+  // Show intro on /start command
+  if (fromStart) {
+    await showIntro(ctx);
+    return;
+  }
+
   // Send or edit welcome message with inline keyboard
   if (editMessage && ctx.callbackQuery?.message) {
     try {
@@ -102,6 +110,37 @@ export async function showMainMenu(
       reply_markup: KeyboardBuilder.mainMenu(),
     });
   }
+}
+
+// Show introduction for new users
+async function showIntro(ctx: MyContext): Promise<void> {
+  const introKeyboard = new InlineKeyboard()
+    .url('📖 Читать гайд', 'https://teletype.in/@merchantai/guide')
+    .row()
+    .text('▶️ Продолжить', CALLBACKS.CONTINUE_TO_MENU);
+
+  await ctx.reply(TEXTS.INTRO, {
+    parse_mode: 'HTML',
+    reply_markup: introKeyboard,
+  });
+}
+
+// Handle continue to menu from intro
+export async function handleContinueToMenu(ctx: MyContext): Promise<void> {
+  await ctx.answerCallbackQuery();
+  
+  // Delete intro message
+  if (ctx.callbackQuery?.message) {
+    try {
+      await ctx.api.deleteMessage(ctx.chat!.id, ctx.callbackQuery.message.message_id);
+    } catch {}
+  }
+
+  // Show main menu
+  await ctx.reply(TEXTS.WELCOME, {
+    parse_mode: 'HTML',
+    reply_markup: KeyboardBuilder.mainMenu(),
+  });
 }
 
 export async function handleMainMenuCallback(ctx: MyContext): Promise<void> {

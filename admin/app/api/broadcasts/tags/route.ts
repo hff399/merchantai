@@ -12,9 +12,9 @@ export async function GET() {
       user.tags?.forEach((tag: string) => tagSet.add(tag));
     });
 
-    return NextResponse.json({ tags: Array.from(tagSet) });
+    return NextResponse.json({ tags: Array.from(tagSet).sort() });
   } catch (error) {
-    console.error('Get tags error:', error);
+    console.error('Tags error:', error);
     return NextResponse.json({ tags: [] });
   }
 }

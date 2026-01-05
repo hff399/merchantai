@@ -7,7 +7,7 @@ export class KeyboardBuilder {
   static mainMenu(): InlineKeyboard {
     return new InlineKeyboard()
       .text(TEXTS.BTN_IMAGE_CARD, CALLBACKS.IMAGE_CARD)
-     // .text(TEXTS.BTN_IMAGE_EDIT, CALLBACKS.IMAGE_EDIT)
+      //.text(TEXTS.BTN_IMAGE_EDIT, CALLBACKS.IMAGE_EDIT)
       .row()
       //.text(TEXTS.BTN_PHOTO_SESSION, CALLBACKS.PHOTO_SESSION)
       //.row()
@@ -88,13 +88,15 @@ export class KeyboardBuilder {
     const big = CREDIT_PACKAGES.big;
 
     return new InlineKeyboard()
-      .text(`${starter.name} · ${starter.price} ₽`, CALLBACKS.BUY_STARTER)
+      .text(`⭐ ${starter.name} · ${starter.price}₽`, CALLBACKS.BUY_STARTER)
       .row()
-      .text(`${pro.name} · ${pro.price} ₽ ⭐`, CALLBACKS.BUY_PRO)
+      .text(`✅ ${pro.name} · ${pro.price}₽`, CALLBACKS.BUY_PRO)
       .row()
-      .text(`${big.name} · ${big.price} ₽`, CALLBACKS.BUY_BIG)
+      .text(`💎 ${big.name} · ${big.price}₽`, CALLBACKS.BUY_BIG)
       .row()
       .text(`Enterprise · от 10 000 ₽`, CALLBACKS.BUY_ENTERPRISE)
+      .row()
+      .text('❓ Почему такая цена?', CALLBACKS.PRICE_EXPLAIN)
       .row()
       .text(TEXTS.BTN_MAIN_MENU, CALLBACKS.BACK_TO_MENU);
   }

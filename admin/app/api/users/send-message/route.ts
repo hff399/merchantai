@@ -18,6 +18,8 @@ export async function POST(request: NextRequest) {
       parse_mode: parseMode || 'HTML',
     });
 
+    console.log(result)
+
     if (result.success) {
       return NextResponse.json({ success: true });
     } else {

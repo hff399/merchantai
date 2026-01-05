@@ -101,7 +101,8 @@ export async function handleImageEditPrompt(ctx: MyContext): Promise<void> {
   }
 
   if (user.credits < IMAGE_EDIT_COST) {
-    await ctx.reply(TEXTS.IMAGE_CARD_NO_CREDITS, {
+    await ctx.reply(TEXTS.IMAGE_EDIT_NO_CREDITS, {
+      parse_mode: 'HTML',
       reply_markup: KeyboardBuilder.creditPackages(),
     });
     return;
@@ -134,7 +135,8 @@ export async function handleEditRegenerate(ctx: MyContext): Promise<void> {
   }
 
   if (user.credits < IMAGE_EDIT_COST) {
-    await ctx.reply(TEXTS.IMAGE_CARD_NO_CREDITS, {
+    await ctx.reply(TEXTS.IMAGE_EDIT_NO_CREDITS, {
+      parse_mode: 'HTML',
       reply_markup: KeyboardBuilder.creditPackages(),
     });
     return;

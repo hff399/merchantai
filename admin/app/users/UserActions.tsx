@@ -9,7 +9,6 @@ import {
   Gift,
   Ban,
   Tag,
-  MessageSquare,
   X,
 } from 'lucide-react';
 
@@ -173,10 +172,10 @@ export default function UserActions({ user }: { user: User }) {
         {showMenu && (
           <>
             <div 
-              className="fixed inset-0 z-10" 
+              className="fixed inset-0 z-40" 
               onClick={() => setShowMenu(false)} 
             />
-            <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-20">
+            <div className="fixed right-4 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
               <button
                 onClick={() => { setShowModal('message'); setShowMenu(false); }}
                 className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 flex items-center gap-2"
@@ -216,7 +215,7 @@ export default function UserActions({ user }: { user: User }) {
       {/* Send Message Modal */}
       {showModal === 'message' && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-xl p-6 w-full max-w-lg">
+          <div className="bg-white rounded-xl p-6 w-full max-w-lg mx-4">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold">
                 Отправить сообщение
@@ -280,7 +279,7 @@ export default function UserActions({ user }: { user: User }) {
       {/* Give Credits Modal */}
       {showModal === 'credits' && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-xl p-6 w-full max-w-sm">
+          <div className="bg-white rounded-xl p-6 w-full max-w-sm mx-4">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold">Начислить токены</h3>
               <button onClick={() => setShowModal(null)}>
@@ -341,7 +340,7 @@ export default function UserActions({ user }: { user: User }) {
       {/* Tags Modal */}
       {showModal === 'tags' && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-xl p-6 w-full max-w-sm">
+          <div className="bg-white rounded-xl p-6 w-full max-w-sm mx-4">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold">Управление тегами</h3>
               <button onClick={() => setShowModal(null)}>

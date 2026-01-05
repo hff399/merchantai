@@ -6,37 +6,29 @@ export async function POST(request: NextRequest) {
     const { title, username, category, member_count } = await request.json();
 
     if (!title) {
-      return NextResponse.json(
-        { error: 'Title is required' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Title is required' }, { status: 400 });
     }
 
     const { data, error } = await supabaseAdmin
       .from('outreach_groups')
       .insert({
         title,
-        username,
-        category,
-        member_count,
+        username: username || null,
+        category: category || null,
+        member_count: member_count || null,
         status: 'active',
       })
       .select()
       .single();
 
     if (error) {
-      return NextResponse.json(
-        { error: 'Failed to create group' },
-        { status: 500 }
-      );
+      console.error('Create group error:', error);
+      return NextResponse.json({ error: 'Failed to create group' }, { status: 500 });
     }
 
     return NextResponse.json({ success: true, group: data });
   } catch (error) {
     console.error('Create group error:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

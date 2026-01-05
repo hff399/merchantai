@@ -6,7 +6,7 @@ import { CALLBACKS } from './constants/texts';
 import { KeyboardBuilder } from './utils/keyboards';
 
 // Handlers
-import { showMainMenu } from './handlers/mainMenu';
+import { showMainMenu, handleContinueToMenu } from './handlers/mainMenu';
 import {
   handleImageCard,
   handleImageCardPhoto,
@@ -28,6 +28,14 @@ import {
   handlePaymentCheck,
   handlePaymentCancel,
 } from './handlers/buyCredits';
+import {
+  handlePriceExplainStart,
+  handlePriceReason1,
+  handlePriceReason2,
+  handlePriceReason3,
+  handlePriceFinal,
+  PRICE_EXPLAIN_CALLBACKS,
+} from './handlers/priceExplain';
 
 // Create bot instance
 const bot = new Bot<MyContext>(config.botToken);
@@ -52,7 +60,7 @@ bot.command('start', async (ctx) => {
   // Extract start parameter for referral tracking
   // Format: /start ref_XXXXXXXX or /start utm_source=xxx
   const startParam = ctx.match;
-  await showMainMenu(ctx, false, startParam || undefined);
+  await showMainMenu(ctx, false, startParam || undefined, true);
 });
 
 bot.command('menu', async (ctx) => {
@@ -107,6 +115,8 @@ bot.callbackQuery(CALLBACKS.BACK_TO_MENU, async (ctx) => {
   await ctx.answerCallbackQuery();
   await showMainMenu(ctx, true);
 });
+
+bot.callbackQuery(CALLBACKS.CONTINUE_TO_MENU, handleContinueToMenu);
 
 bot.callbackQuery(CALLBACKS.IMAGE_CARD, async (ctx) => {
   await ctx.answerCallbackQuery();
@@ -172,6 +182,17 @@ bot.callbackQuery(CALLBACKS.BUY_ENTERPRISE, async (ctx) => {
 // Payment callbacks
 bot.callbackQuery(CALLBACKS.PAYMENT_CHECK, handlePaymentCheck);
 bot.callbackQuery(CALLBACKS.PAYMENT_CANCEL, handlePaymentCancel);
+
+// Price explain flow callbacks
+bot.callbackQuery(PRICE_EXPLAIN_CALLBACKS.START, handlePriceExplainStart);
+bot.callbackQuery(PRICE_EXPLAIN_CALLBACKS.REASON_1, handlePriceReason1);
+bot.callbackQuery(PRICE_EXPLAIN_CALLBACKS.REASON_2, handlePriceReason2);
+bot.callbackQuery(PRICE_EXPLAIN_CALLBACKS.REASON_3, handlePriceReason3);
+bot.callbackQuery(PRICE_EXPLAIN_CALLBACKS.FINAL, handlePriceFinal);
+bot.callbackQuery(PRICE_EXPLAIN_CALLBACKS.BACK_TO_PRICING, async (ctx) => {
+  await ctx.answerCallbackQuery();
+  await handleBuyCredits(ctx, true);
+});
 
 // ============================================
 // MESSAGE HANDLERS

@@ -81,6 +81,7 @@ export async function handleImageCardPhoto(ctx: MyContext): Promise<void> {
 
     if (user.credits < IMAGE_CARD_COST) {
       await ctx.reply(TEXTS.IMAGE_CARD_NO_CREDITS, {
+        parse_mode: 'HTML',
         reply_markup: KeyboardBuilder.creditPackages(),
       });
       return;
@@ -125,6 +126,7 @@ export async function handleImageCardPrompt(ctx: MyContext): Promise<void> {
 
   if (user.credits < IMAGE_CARD_COST) {
     await ctx.reply(TEXTS.IMAGE_CARD_NO_CREDITS, {
+      parse_mode: 'HTML',
       reply_markup: KeyboardBuilder.creditPackages(),
     });
     return;
@@ -165,6 +167,7 @@ export async function handleRegenerate(ctx: MyContext): Promise<void> {
 
   if (user.credits < IMAGE_CARD_COST) {
     await ctx.reply(TEXTS.IMAGE_CARD_NO_CREDITS, {
+      parse_mode: 'HTML',
       reply_markup: KeyboardBuilder.creditPackages(),
     });
     return;

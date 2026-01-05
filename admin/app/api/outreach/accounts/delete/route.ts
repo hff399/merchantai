@@ -18,6 +18,7 @@ export async function POST(request: NextRequest) {
       .eq('id', accountId);
 
     if (error) {
+      console.error('Delete account error:', error);
       return NextResponse.json(
         { error: 'Failed to delete account' },
         { status: 500 }

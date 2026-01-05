@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
 import { MoreVertical, Send, Check, X, MessageSquare, UserCheck } from 'lucide-react';
 
@@ -13,8 +12,12 @@ interface Lead {
   dm_sent: boolean;
 }
 
-export default function LeadActions({ lead }: { lead: Lead }) {
-  const router = useRouter();
+interface LeadActionsProps {
+  lead: Lead;
+  onUpdate?: () => void;
+}
+
+export default function LeadActions({ lead, onUpdate }: LeadActionsProps) {
   const [showMenu, setShowMenu] = useState(false);
   const [loading, setLoading] = useState(false);
 
@@ -29,7 +32,7 @@ export default function LeadActions({ lead }: { lead: Lead }) {
 
       if (res.ok) {
         toast.success('Статус обновлён');
-        router.refresh();
+        onUpdate?.();
       } else {
         toast.error('Ошибка');
       }
@@ -52,7 +55,7 @@ export default function LeadActions({ lead }: { lead: Lead }) {
 
       if (res.ok) {
         toast.success('DM отправлен');
-        router.refresh();
+        onUpdate?.();
       } else {
         const data = await res.json();
         toast.error(data.error || 'Ошибка');
@@ -78,16 +81,16 @@ export default function LeadActions({ lead }: { lead: Lead }) {
       {showMenu && (
         <>
           <div
-            className="fixed inset-0 z-10"
+            className="fixed inset-0 z-40"
             onClick={() => setShowMenu(false)}
           />
-          <div className="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-lg border border-gray-200 z-20">
+          <div className="fixed right-4 mt-2 w-56 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
             {lead.username && (
               <a
                 href={`https://t.me/${lead.username}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 flex items-center gap-2"
+                className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 flex items-center gap-2 block"
               >
                 <MessageSquare className="w-4 h-4" />
                 Открыть в Telegram
