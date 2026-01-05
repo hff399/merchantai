@@ -3,7 +3,6 @@ import { TEXTS } from '../constants/texts';
 import { KeyboardBuilder } from '../utils/keyboards';
 import { MessageManager, formatDate } from '../utils/helpers';
 import { supabase } from '../services/supabase';
-import { config } from '../config';
 
 export async function handleProfile(ctx: MyContext, editMessage = false): Promise<void> {
   await MessageManager.cleanup(ctx);
@@ -20,12 +19,12 @@ export async function handleProfile(ctx: MyContext, editMessage = false): Promis
     }
 
     // Get referral stats (with safe defaults)
-    const referralStats = await supabase.getReferralStats(user.id);
+    //const referralStats = await supabase.getReferralStats(user.id);
     
     // Build bot username for referral link
-    const botUsername = ctx.me?.username || 'MerchantAIBot';
-    const referralCode = referralStats.referralCode || user.id.substring(0, 8);
-    const referralLink = `https://t.me/${botUsername}?start=ref_${referralCode}`;
+    //const botUsername = ctx.me?.username || 'MerchantAIBot';
+    //const referralCode = referralStats.referralCode || user.id.substring(0, 8);
+    //const referralLink = `https://t.me/${botUsername}?start=ref_${referralCode}`;
 
     // Format profile information
     const profileText = `<b>Профиль</b>
