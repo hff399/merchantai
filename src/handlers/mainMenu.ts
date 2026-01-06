@@ -119,7 +119,16 @@ async function showIntro(ctx: MyContext): Promise<void> {
     .row()
     .text('▶️ Продолжить', CALLBACKS.CONTINUE_TO_MENU);
 
-  await ctx.reply(TEXTS.INTRO, {
+  // Send video with caption and buttons
+  // You can use either:
+  // 1. File ID (after first upload, Telegram returns file_id)
+  // 2. URL to video file
+  // 3. Local file path with InputFile
+  
+  const videoFileId = 'BAACAgIAAxkBAAICumldNa8xfF9NRtG2kpbidctyj0SOAAJyjAAC1dHoSgwwErkVQHVWOAQ'; // Replace with actual file_id
+  
+  await ctx.replyWithVideo(videoFileId, {
+    caption: TEXTS.INTRO,
     parse_mode: 'HTML',
     reply_markup: introKeyboard,
   });

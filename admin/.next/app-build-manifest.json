@@ -1,9 +1,9 @@
 {
   "pages": {
-    "/outreach/accounts/page": [
+    "/broadcasts/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/outreach/accounts/page.js"
+      "static/chunks/app/broadcasts/page.js"
     ],
     "/layout": [
       "static/chunks/webpack.js",
@@ -11,20 +11,10 @@
       "static/css/app/layout.css",
       "static/chunks/app/layout.js"
     ],
-    "/outreach/groups/page": [
+    "/outreach/accounts/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/outreach/groups/page.js"
-    ],
-    "/outreach/campaigns/page": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/outreach/campaigns/page.js"
-    ],
-    "/outreach/leads/page": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/outreach/leads/page.js"
+      "static/chunks/app/outreach/accounts/page.js"
     ],
     "/page": [
       "static/chunks/webpack.js",

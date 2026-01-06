@@ -1,8 +1,5 @@
 {
-  "/outreach/groups/page": "app/outreach/groups/page.js",
-  "/outreach/leads/page": "app/outreach/leads/page.js",
-  "/api/outreach/accounts/send-code/route": "app/api/outreach/accounts/send-code/route.js",
-  "/outreach/accounts/page": "app/outreach/accounts/page.js",
   "/page": "app/page.js",
-  "/api/outreach/accounts/list/route": "app/api/outreach/accounts/list/route.js"
+  "/broadcasts/page": "app/broadcasts/page.js",
+  "/outreach/accounts/page": "app/outreach/accounts/page.js"
 }

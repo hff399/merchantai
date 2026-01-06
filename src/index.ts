@@ -256,6 +256,15 @@ bot.on('message:text', async (ctx) => {
   }
 });
 
+// TEMPORARY: Get video file_id - remove after getting the ID
+bot.on('message:video', async (ctx) => {
+  const fileId = ctx.message.video.file_id;
+  console.log('VIDEO FILE_ID:', fileId);
+  await ctx.reply(`✅ Video file_id:\n\n<code>${fileId}</code>\n\nСкопируй и вставь в mainMenu.ts`, {
+    parse_mode: 'HTML',
+  });
+});
+
 // Photo handler - context-aware
 bot.on('message:photo', async (ctx) => {
   const route = ctx.session.currentRoute;
