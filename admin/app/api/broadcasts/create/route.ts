@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
-import { sendTelegramMessage } from '@/lib/telegram';
+import { sendMessage } from '@/lib/telegram';
 
 export async function POST(request: NextRequest) {
   try {
@@ -61,7 +61,8 @@ export async function POST(request: NextRequest) {
 
         for (const recipient of recipients) {
           try {
-            await sendTelegramMessage(recipient.telegram_id, message, parse_mode);
+         
+            await sendMessage({chat_id: recipient.telegram_id as number, text: message, parse_mode});
             await supabaseAdmin
               .from('broadcast_recipients')
               .update({ status: 'sent', sent_at: new Date().toISOString() })

@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 
@@ -44,7 +46,9 @@ export async function GET(request: NextRequest) {
       .select('category')
       .not('category', 'is', null);
 
-    const categories = [...new Set(catData?.map(g => g.category).filter(Boolean) || [])];
+    const categories = Array.from(
+  new Set(catData?.map(g => g.category).filter(Boolean) ?? [])
+);
 
     return NextResponse.json({
       groups: data || [],
