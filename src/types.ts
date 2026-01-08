@@ -78,15 +78,72 @@ export interface ImageEditSession {
   editCount: number;
 }
 
+// Image input for AI generation
+export interface ImageInput {
+  url: string;
+  fileId?: string;           // Telegram file_id
+  description?: string;      // User's caption/note for this image
+  index: number;             // Order in the array (1-8)
+}
+
+// Carousel slide data
+export interface CarouselSlide {
+  slideNumber: number;
+  imageUrl: string;           // URL in storage (Banana/Supabase)
+  imageFileId?: string;       // Telegram file_id for quick resend
+  prompt: string;
+  style?: string;             // Extracted/detected style description
+  generatedAt: string;
+}
+
+// Carousel session for multi-slide generation
+export interface CarouselSession {
+  sessionId: string;
+  
+  // Input images (up to 8)
+  inputImages: ImageInput[];
+  
+  // Primary product image (shortcut to first product image)
+  originalImageUrl: string;
+  originalImageFileId?: string;
+  
+  // Current working state
+  currentSlideNumber: number;
+  currentPrompt?: string;         // Original prompt for the card
+  currentEditRequest?: string;    // Edit request (what to change)
+  currentImageUrl?: string;       // Latest generated image URL
+  currentImageFileId?: string;    // Latest generated image Telegram file_id
+  currentImageBuffer?: Buffer;    // Latest generated image buffer
+  
+  // Finalized slides (confirmed by user)
+  slides: CarouselSlide[];
+  
+  // Style reference (extracted from first finalized slide)
+  styleReference?: {
+    imageUrl: string;
+    styleDescription: string;
+  };
+  
+  // Generation tracking
+  generationCount: number;       // Total generations in this session
+  orderId?: string;              // Current order ID
+  
+  // Multi-image collection state
+  isCollectingImages?: boolean;  // True when waiting for more images
+  collectedImagesCount?: number;
+}
+
 export interface SessionData {
   currentRoute?: string;
   tempData?: any;
   lastMessageId?: number;
   processingMessageId?: number;
-  // Image generation session
+  // Legacy image generation session (keep for backward compatibility)
   imageGenSession?: ImageGenSession;
   // Image edit session
   imageEditSession?: ImageEditSession;
+  // New carousel session
+  carouselSession?: CarouselSession;
 }
 
 export type MyContext = Context & SessionFlavor<SessionData>;
@@ -121,10 +178,10 @@ export const CREDIT_PACKAGES: Record<string, CreditPackage> = {
     id: 'pro',
     name: 'Pro',
     emoji: '',
-    credits: 180,
+    credits: 184,
     price: 1490,
     pricePerCard: 32,
-    cardsCount: 45,
+    cardsCount: 46,
     description: 'Рекомендуем',
     isPopular: true,
   },
@@ -132,10 +189,10 @@ export const CREDIT_PACKAGES: Record<string, CreditPackage> = {
     id: 'big',
     name: 'Big',
     emoji: '',
-    credits: 680,
+    credits: 664,
     price: 4990,
-    pricePerCard: 29,
-    cardsCount: 170,
+    pricePerCard: 30,
+    cardsCount: 166,
     description: 'Выгодно',
   },
   enterprise: {
@@ -185,6 +242,12 @@ export const ROUTES = {
   IMAGE_CARD_WAITING_PHOTO: 'image_card_waiting_photo',
   IMAGE_CARD_WAITING_PROMPT: 'image_card_waiting_prompt',
   IMAGE_CARD_SESSION: 'image_card_session',
+  // Carousel routes
+  CAROUSEL_WAITING_PHOTO: 'carousel_waiting_photo',
+  CAROUSEL_WAITING_PROMPT: 'carousel_waiting_prompt',
+  CAROUSEL_SESSION: 'carousel_session',
+  CAROUSEL_NEXT_SLIDE: 'carousel_next_slide',
+  // Image edit
   IMAGE_EDIT: 'image_edit',
   IMAGE_EDIT_WAITING_PHOTO: 'image_edit_waiting_photo',
   IMAGE_EDIT_WAITING_PROMPT: 'image_edit_waiting_prompt',

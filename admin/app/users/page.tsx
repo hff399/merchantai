@@ -1,298 +1,455 @@
-import { supabaseAdmin } from '@/lib/supabase';
-import { formatDate } from '@/lib/utils';
-import Link from 'next/link';
-import { Users, Search, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
-import UserActions from './UserActions';
+'use client';
 
-interface SearchParams {
-  search?: string;
-  tag?: string;
-  sort?: string;
-  order?: 'asc' | 'desc';
-  page?: string;
-  blocked?: string;
+import { useEffect, useState, useCallback, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import toast from 'react-hot-toast';
+import {
+  Users,
+  Search,
+  ArrowUp,
+  ArrowDown,
+  ArrowUpDown,
+  MoreVertical,
+  MessageSquare,
+  Tag,
+  Ban,
+  CheckCircle,
+  CreditCard,
+  ExternalLink,
+  RefreshCw,
+  X,
+  Plus,
+  Coins,
+  Calendar,
+  TrendingUp,
+  Loader2,
+} from 'lucide-react';
+
+interface User {
+  id: string;
+  telegram_id: number;
+  username: string | null;
+  first_name: string | null;
+  credits: number;
+  cards_created: number;
+  total_spent: number;
+  referred_by: string | null;
+  utm_source: string | null;
+  is_blocked: boolean;
+  tags: string[];
+  created_at: string;
 }
 
-async function getUsers(searchParams: SearchParams) {
-  const page = parseInt(searchParams.page || '1');
-  const limit = 20;
-  const offset = (page - 1) * limit;
-  const sortField = searchParams.sort || 'created_at';
-  const sortOrder = searchParams.order || 'desc';
-
-  let query = supabaseAdmin
-    .from('users')
-    .select('*', { count: 'exact' });
-
-  // Search filter
-  if (searchParams.search) {
-    const search = searchParams.search;
-    query = query.or(`username.ilike.%${search}%,first_name.ilike.%${search}%,telegram_id.eq.${parseInt(search) || 0}`);
-  }
-
-  // Tag filter
-  if (searchParams.tag) {
-    query = query.contains('tags', [searchParams.tag]);
-  }
-
-  // Blocked filter
-  if (searchParams.blocked === 'true') {
-    query = query.eq('is_blocked', true);
-  } else if (searchParams.blocked === 'false') {
-    query = query.eq('is_blocked', false);
-  }
-
-  // Sorting
-  query = query.order(sortField, { ascending: sortOrder === 'asc' });
-
-  const { data, count } = await query.range(offset, offset + limit - 1);
-
-  return {
-    users: data || [],
-    total: count || 0,
-    page,
-    totalPages: Math.ceil((count || 0) / limit),
-  };
+interface UsersStats {
+  total: number;
+  active: number;
+  paid: number;
+  blocked: number;
+  todayNew: number;
 }
 
-async function getAllTags() {
-  const { data } = await supabaseAdmin
-    .from('users')
-    .select('tags');
-
-  const tagSet = new Set<string>();
-  data?.forEach(user => {
-    user.tags?.forEach((tag: string) => tagSet.add(tag));
+function formatDate(dateString: string): string {
+  return new Date(dateString).toLocaleDateString('ru-RU', {
+    day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit',
   });
-  return Array.from(tagSet).sort();
 }
 
-function SortLink({ 
-  field, 
-  currentSort, 
-  currentOrder, 
-  searchParams, 
-  children 
-}: { 
-  field: string;
-  currentSort: string;
-  currentOrder: string;
-  searchParams: SearchParams;
-  children: React.ReactNode;
-}) {
-  const isActive = currentSort === field;
-  const nextOrder = isActive && currentOrder === 'desc' ? 'asc' : 'desc';
-  
-  const params = new URLSearchParams();
-  if (searchParams.search) params.set('search', searchParams.search);
-  if (searchParams.tag) params.set('tag', searchParams.tag);
-  if (searchParams.blocked) params.set('blocked', searchParams.blocked);
-  params.set('sort', field);
-  params.set('order', nextOrder);
+function formatCurrency(amount: number): string {
+  return new Intl.NumberFormat('ru-RU', { style: 'currency', currency: 'RUB', minimumFractionDigits: 0 }).format(amount);
+}
+
+function UserActions({ user, onUpdate }: { user: User; onUpdate: () => void }) {
+  const [showMenu, setShowMenu] = useState(false);
+  const [showModal, setShowModal] = useState<'message' | 'credits' | 'tags' | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState('');
+  const [parseMode, setParseMode] = useState('HTML');
+  const [creditsAmount, setCreditsAmount] = useState('');
+  const [userTags, setUserTags] = useState<string[]>(user.tags || []);
+  const [newTag, setNewTag] = useState('');
+
+  const handleSendMessage = async () => {
+    if (!message.trim()) return;
+    setLoading(true);
+    try {
+      const res = await fetch('/api/users/send-message', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ telegramId: user.telegram_id, message, parseMode }),
+      });
+      if (res.ok) {
+        toast.success('Сообщение отправлено');
+        setShowModal(null);
+        setMessage('');
+      } else {
+        const data = await res.json();
+        toast.error(data.error || 'Ошибка отправки');
+      }
+    } catch { toast.error('Ошибка соединения'); }
+    finally { setLoading(false); }
+  };
+
+  const handleGiveCredits = async () => {
+    const amount = parseInt(creditsAmount);
+    if (isNaN(amount) || amount === 0) { toast.error('Введите корректное число'); return; }
+    setLoading(true);
+    try {
+      const res = await fetch('/api/users/give-credits', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: user.id, amount }),
+      });
+      if (res.ok) {
+        toast.success(`Баланс изменён на ${amount > 0 ? '+' : ''}${amount}`);
+        setShowModal(null);
+        setCreditsAmount('');
+        onUpdate();
+      } else { toast.error('Ошибка'); }
+    } catch { toast.error('Ошибка соединения'); }
+    finally { setLoading(false); }
+  };
+
+  const handleUpdateTags = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch('/api/users/update-tags', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: user.id, tags: userTags }),
+      });
+      if (res.ok) { toast.success('Теги обновлены'); setShowModal(null); onUpdate(); }
+      else { toast.error('Ошибка'); }
+    } catch { toast.error('Ошибка соединения'); }
+    finally { setLoading(false); }
+  };
+
+  const handleToggleBlock = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch('/api/users/toggle-block', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: user.id, block: !user.is_blocked }),
+      });
+      if (res.ok) {
+        toast.success(user.is_blocked ? 'Пользователь разблокирован' : 'Пользователь заблокирован');
+        setShowMenu(false);
+        onUpdate();
+      } else { toast.error('Ошибка'); }
+    } catch { toast.error('Ошибка соединения'); }
+    finally { setLoading(false); }
+  };
+
+  const addTag = () => {
+    if (newTag.trim() && !userTags.includes(newTag.trim())) {
+      setUserTags([...userTags, newTag.trim()]);
+      setNewTag('');
+    }
+  };
 
   return (
-    <Link 
-      href={`/users?${params.toString()}`}
-      className="flex items-center gap-1 hover:text-gray-900"
-    >
-      {children}
-      {isActive ? (
-        currentOrder === 'desc' ? <ArrowDown className="w-3 h-3" /> : <ArrowUp className="w-3 h-3" />
-      ) : (
-        <ArrowUpDown className="w-3 h-3 opacity-30" />
+    <>
+      <div className="relative">
+        <button onClick={() => setShowMenu(!showMenu)} className="p-2 hover:bg-gray-100 rounded-lg" disabled={loading}>
+          {loading ? <Loader2 className="w-5 h-5 animate-spin text-gray-500" /> : <MoreVertical className="w-5 h-5 text-gray-500" />}
+        </button>
+        {showMenu && (
+          <>
+            <div className="fixed inset-0 z-40" onClick={() => setShowMenu(false)} />
+            <div className="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
+              {user.username && (
+                <a href={`https://t.me/${user.username}`} target="_blank" rel="noopener noreferrer" className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 flex items-center gap-2">
+                  <ExternalLink className="w-4 h-4" /> Открыть в Telegram
+                </a>
+              )}
+              <button onClick={() => { setShowModal('message'); setShowMenu(false); }} className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 flex items-center gap-2">
+                <MessageSquare className="w-4 h-4" /> Написать сообщение
+              </button>
+              <button onClick={() => { setShowModal('credits'); setShowMenu(false); }} className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 flex items-center gap-2">
+                <Coins className="w-4 h-4" /> Начислить токены
+              </button>
+              <button onClick={() => { setShowModal('tags'); setShowMenu(false); }} className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 flex items-center gap-2">
+                <Tag className="w-4 h-4" /> Редактировать теги
+              </button>
+              <hr className="my-1" />
+              <button onClick={handleToggleBlock} className={`w-full px-4 py-2 text-left text-sm hover:bg-gray-50 flex items-center gap-2 ${user.is_blocked ? 'text-green-600' : 'text-red-600'}`}>
+                {user.is_blocked ? <CheckCircle className="w-4 h-4" /> : <Ban className="w-4 h-4" />}
+                {user.is_blocked ? 'Разблокировать' : 'Заблокировать'}
+              </button>
+            </div>
+          </>
+        )}
+      </div>
+
+      {showModal === 'message' && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl p-6 w-full max-w-md">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold">Отправить сообщение</h3>
+              <button onClick={() => setShowModal(null)}><X className="w-5 h-5 text-gray-500" /></button>
+            </div>
+            <div className="space-y-4">
+              <select value={parseMode} onChange={(e) => setParseMode(e.target.value)} className="w-full px-3 py-2 border border-gray-200 rounded-lg">
+                <option value="HTML">HTML</option>
+                <option value="Markdown">Markdown</option>
+              </select>
+              <textarea value={message} onChange={(e) => setMessage(e.target.value)} rows={5} className="w-full px-3 py-2 border border-gray-200 rounded-lg" placeholder="Введите текст сообщения..." />
+              <div className="flex gap-3">
+                <button onClick={() => setShowModal(null)} className="flex-1 px-4 py-2 border border-gray-200 rounded-lg hover:bg-gray-50">Отмена</button>
+                <button onClick={handleSendMessage} disabled={loading || !message.trim()} className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50">
+                  {loading ? 'Отправка...' : 'Отправить'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
-    </Link>
+
+      {showModal === 'credits' && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl p-6 w-full max-w-sm">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold">Начислить токены</h3>
+              <button onClick={() => setShowModal(null)}><X className="w-5 h-5 text-gray-500" /></button>
+            </div>
+            <p className="text-sm text-gray-500 mb-4">Текущий баланс: <span className="font-medium">{user.credits}</span></p>
+            <div className="space-y-4">
+              <input type="number" value={creditsAmount} onChange={(e) => setCreditsAmount(e.target.value)} className="w-full px-3 py-2 border border-gray-200 rounded-lg" placeholder="Введите число" />
+              <div className="flex flex-wrap gap-2">
+                {[10, 50, 100, 200].map((amount) => (
+                  <button key={amount} onClick={() => setCreditsAmount(String(amount))} className="px-3 py-1 bg-gray-100 rounded hover:bg-gray-200 text-sm">+{amount}</button>
+                ))}
+              </div>
+              <div className="flex gap-3">
+                <button onClick={() => setShowModal(null)} className="flex-1 px-4 py-2 border border-gray-200 rounded-lg hover:bg-gray-50">Отмена</button>
+                <button onClick={handleGiveCredits} disabled={loading || !creditsAmount} className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50">
+                  {loading ? 'Сохранение...' : 'Начислить'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showModal === 'tags' && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl p-6 w-full max-w-sm">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold">Редактировать теги</h3>
+              <button onClick={() => setShowModal(null)}><X className="w-5 h-5 text-gray-500" /></button>
+            </div>
+            <div className="space-y-4">
+              <div className="flex gap-2">
+                <input type="text" value={newTag} onChange={(e) => setNewTag(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && addTag()} className="flex-1 px-3 py-2 border border-gray-200 rounded-lg" placeholder="Новый тег" />
+                <button onClick={addTag} className="px-4 py-2 bg-gray-100 rounded-lg hover:bg-gray-200"><Plus className="w-4 h-4" /></button>
+              </div>
+              <div className="flex flex-wrap gap-2 min-h-[60px] p-3 bg-gray-50 rounded-lg">
+                {userTags.length === 0 ? <span className="text-gray-400 text-sm">Нет тегов</span> : userTags.map((tag) => (
+                  <span key={tag} className="px-2 py-1 bg-blue-100 text-blue-700 text-sm rounded flex items-center gap-1">
+                    {tag} <button onClick={() => setUserTags(userTags.filter(t => t !== tag))}><X className="w-3 h-3" /></button>
+                  </span>
+                ))}
+              </div>
+              <div className="flex gap-3">
+                <button onClick={() => setShowModal(null)} className="flex-1 px-4 py-2 border border-gray-200 rounded-lg hover:bg-gray-50">Отмена</button>
+                <button onClick={handleUpdateTags} disabled={loading} className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50">
+                  {loading ? 'Сохранение...' : 'Сохранить'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }
 
-export default async function UsersPage({
-  searchParams,
-}: {
-  searchParams: SearchParams;
-}) {
-  const { users, total, page, totalPages } = await getUsers(searchParams);
-  const allTags = await getAllTags();
-  const currentSort = searchParams.sort || 'created_at';
-  const currentOrder = searchParams.order || 'desc';
+function UsersPageContent() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  
+  const [users, setUsers] = useState<User[]>([]);
+  const [stats, setStats] = useState<UsersStats | null>(null);
+  const [allTags, setAllTags] = useState<string[]>([]);
+  const [total, setTotal] = useState(0);
+  const [loading, setLoading] = useState(true);
+  
+  const [search, setSearch] = useState(searchParams.get('search') || '');
+  const [tag, setTag] = useState(searchParams.get('tag') || '');
+  const [blocked, setBlocked] = useState(searchParams.get('blocked') || '');
+  const [hasSpent, setHasSpent] = useState(searchParams.get('hasSpent') || '');
+  const [sort, setSort] = useState(searchParams.get('sort') || 'created_at');
+  const [order, setOrder] = useState<'asc' | 'desc'>((searchParams.get('order') as 'asc' | 'desc') || 'desc');
+  const [page, setPage] = useState(parseInt(searchParams.get('page') || '1'));
 
-  // Build URL helper
-  const buildUrl = (newParams: Partial<SearchParams>) => {
+  const fetchUsers = useCallback(async () => {
+    setLoading(true);
     const params = new URLSearchParams();
-    const merged = { ...searchParams, ...newParams };
-    if (merged.search) params.set('search', merged.search);
-    if (merged.tag) params.set('tag', merged.tag);
-    if (merged.sort) params.set('sort', merged.sort);
-    if (merged.order) params.set('order', merged.order);
-    if (merged.blocked) params.set('blocked', merged.blocked);
-    if (merged.page && merged.page !== '1') params.set('page', merged.page);
-    return `/users?${params.toString()}`;
+    if (search) params.set('search', search);
+    if (tag) params.set('tag', tag);
+    if (blocked) params.set('blocked', blocked);
+    if (hasSpent) params.set('hasSpent', hasSpent);
+    params.set('sort', sort);
+    params.set('order', order);
+    params.set('page', String(page));
+
+    try {
+      const res = await fetch(`/api/users/list?${params.toString()}`);
+      const data = await res.json();
+      setUsers(data.users || []);
+      setTotal(data.total || 0);
+      setStats(data.stats || null);
+      setAllTags(data.allTags || []);
+    } catch { toast.error('Ошибка загрузки'); }
+    setLoading(false);
+  }, [search, tag, blocked, hasSpent, sort, order, page]);
+
+  useEffect(() => { fetchUsers(); }, [fetchUsers]);
+
+  const handleSort = (field: string) => {
+    if (sort === field) { setOrder(order === 'desc' ? 'asc' : 'desc'); }
+    else { setSort(field); setOrder('desc'); }
+    setPage(1);
   };
+
+  const clearFilters = () => { setSearch(''); setTag(''); setBlocked(''); setHasSpent(''); setPage(1); };
+  const hasFilters = search || tag || blocked || hasSpent;
+  const totalPages = Math.ceil(total / 20);
+
+  const SortButton = ({ field, children }: { field: string; children: React.ReactNode }) => (
+    <button onClick={() => handleSort(field)} className="flex items-center gap-1 hover:text-gray-900">
+      {children}
+      {sort === field ? (order === 'desc' ? <ArrowDown className="w-3 h-3" /> : <ArrowUp className="w-3 h-3" />) : <ArrowUpDown className="w-3 h-3 opacity-30" />}
+    </button>
+  );
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Пользователи</h1>
-          <p className="text-gray-500">Всего: {total}</p>
+          <p className="text-gray-500">Управление пользователями бота</p>
         </div>
+        <button onClick={fetchUsers} disabled={loading} className="p-2 hover:bg-gray-100 rounded-lg">
+          <RefreshCw className={`w-5 h-5 text-gray-500 ${loading ? 'animate-spin' : ''}`} />
+        </button>
       </div>
 
-      {/* Filters */}
-      <div className="bg-white rounded-xl border border-gray-200 p-4">
-        <form className="flex flex-wrap gap-4">
-          {/* Search */}
-          <div className="flex-1 min-w-[200px]">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-              <input
-                type="text"
-                name="search"
-                defaultValue={searchParams.search}
-                placeholder="Поиск по имени, username или ID"
-                className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg"
-              />
+      {stats && (
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+          <div className="bg-white rounded-xl border border-gray-200 p-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-blue-50"><Users className="w-5 h-5 text-blue-600" /></div>
+              <div><p className="text-2xl font-bold">{stats.total.toLocaleString()}</p><p className="text-xs text-gray-500">Всего</p></div>
             </div>
           </div>
+          <div className="bg-white rounded-xl border border-gray-200 p-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-green-50"><TrendingUp className="w-5 h-5 text-green-600" /></div>
+              <div><p className="text-2xl font-bold">{stats.active.toLocaleString()}</p><p className="text-xs text-gray-500">Активных</p></div>
+            </div>
+          </div>
+          <div className="bg-white rounded-xl border border-gray-200 p-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-purple-50"><CreditCard className="w-5 h-5 text-purple-600" /></div>
+              <div><p className="text-2xl font-bold">{stats.paid.toLocaleString()}</p><p className="text-xs text-gray-500">Платящих</p></div>
+            </div>
+          </div>
+          <div className="bg-white rounded-xl border border-gray-200 p-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-orange-50"><Calendar className="w-5 h-5 text-orange-600" /></div>
+              <div><p className="text-2xl font-bold">+{stats.todayNew}</p><p className="text-xs text-gray-500">Сегодня</p></div>
+            </div>
+          </div>
+          <div className="bg-white rounded-xl border border-gray-200 p-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-red-50"><Ban className="w-5 h-5 text-red-600" /></div>
+              <div><p className="text-2xl font-bold">{stats.blocked}</p><p className="text-xs text-gray-500">Заблокировано</p></div>
+            </div>
+          </div>
+        </div>
+      )}
 
-          {/* Tag filter */}
-          <select
-            name="tag"
-            defaultValue={searchParams.tag}
-            className="px-4 py-2 border border-gray-200 rounded-lg min-w-[150px]"
-          >
+      <div className="bg-white rounded-xl border border-gray-200 p-4">
+        <div className="flex flex-wrap gap-4 items-center">
+          <div className="relative flex-1 min-w-[200px]">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <input type="text" value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }} placeholder="Поиск по имени, username или ID..." className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg" />
+          </div>
+          <select value={tag} onChange={(e) => { setTag(e.target.value); setPage(1); }} className="px-3 py-2 border border-gray-200 rounded-lg text-sm">
             <option value="">Все теги</option>
-            {allTags.map(tag => (
-              <option key={tag} value={tag}>{tag}</option>
-            ))}
+            {allTags.map(t => <option key={t} value={t}>{t}</option>)}
           </select>
-
-          {/* Blocked filter */}
-          <select
-            name="blocked"
-            defaultValue={searchParams.blocked}
-            className="px-4 py-2 border border-gray-200 rounded-lg"
-          >
-            <option value="">Все статусы</option>
+          <select value={hasSpent} onChange={(e) => { setHasSpent(e.target.value); setPage(1); }} className="px-3 py-2 border border-gray-200 rounded-lg text-sm">
+            <option value="">Все пользователи</option>
+            <option value="true">Платящие</option>
+            <option value="false">Бесплатные</option>
+          </select>
+          <select value={blocked} onChange={(e) => { setBlocked(e.target.value); setPage(1); }} className="px-3 py-2 border border-gray-200 rounded-lg text-sm">
+            <option value="">Любой статус</option>
             <option value="false">Активные</option>
             <option value="true">Заблокированные</option>
           </select>
-
-          <button
-            type="submit"
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-          >
-            Применить
-          </button>
-
-          {(searchParams.search || searchParams.tag || searchParams.blocked) && (
-            <Link
-              href="/users"
-              className="px-4 py-2 border border-gray-200 rounded-lg hover:bg-gray-50"
-            >
-              Сбросить
-            </Link>
-          )}
-        </form>
+          {hasFilters && <button onClick={clearFilters} className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700"><X className="w-4 h-4" />Сбросить</button>}
+        </div>
       </div>
 
-      {/* Users Table */}
-      <div className="bg-white rounded-xl border border-gray-200">
-        {users.length === 0 ? (
-          <div className="p-12 text-center">
+      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+        {loading && users.length === 0 ? (
+          <div className="flex items-center justify-center h-64"><Loader2 className="w-8 h-8 animate-spin text-blue-600" /></div>
+        ) : users.length === 0 ? (
+          <div className="text-center py-12">
             <Users className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">
-              Пользователи не найдены
-            </h3>
-            <p className="text-gray-500">
-              Попробуйте изменить параметры поиска
-            </p>
+            <h3 className="text-lg font-medium text-gray-900 mb-2">Пользователи не найдены</h3>
+            <p className="text-gray-500">Попробуйте изменить параметры поиска</p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full">
+          <div className="overflow-x-auto overflow-visible">
+            <table className="w-full overflow-visible">
               <thead className="bg-gray-50 border-b border-gray-200">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                    Пользователь
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                    <SortLink field="credits" currentSort={currentSort} currentOrder={currentOrder} searchParams={searchParams}>
-                      Токены
-                    </SortLink>
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                    <SortLink field="cards_created" currentSort={currentSort} currentOrder={currentOrder} searchParams={searchParams}>
-                      Карточек
-                    </SortLink>
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                    <SortLink field="total_spent" currentSort={currentSort} currentOrder={currentOrder} searchParams={searchParams}>
-                      Потрачено
-                    </SortLink>
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                    Теги
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                    <SortLink field="created_at" currentSort={currentSort} currentOrder={currentOrder} searchParams={searchParams}>
-                      Регистрация
-                    </SortLink>
-                  </th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">
-                    Действия
-                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Пользователь</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase"><SortButton field="credits">Токены</SortButton></th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase"><SortButton field="cards_created">Карточки</SortButton></th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase"><SortButton field="total_spent">Потрачено</SortButton></th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Источник</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase"><SortButton field="created_at">Регистрация</SortButton></th>
+                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Действия</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {users.map((user: any) => (
-                  <tr key={user.id} className={`hover:bg-gray-50 ${user.is_blocked ? 'bg-red-50' : ''}`}>
+                {users.map((user) => (
+                  <tr key={user.id} className={`hover:bg-gray-50 ${user.is_blocked ? 'bg-red-50/50' : ''}`}>
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                          <span className="text-blue-600 font-medium">
-                            {(user.first_name || user.username || '?')[0].toUpperCase()}
-                          </span>
+                        <div className={`w-10 h-10 rounded-full flex items-center justify-center ${user.total_spent > 0 ? 'bg-gradient-to-br from-purple-500 to-pink-500' : 'bg-gray-200'}`}>
+                          <span className={`font-medium ${user.total_spent > 0 ? 'text-white' : 'text-gray-600'}`}>{(user.first_name || user.username || '?')[0].toUpperCase()}</span>
                         </div>
                         <div>
-                          <p className="font-medium text-gray-900">
-                            {user.first_name || 'Без имени'}
-                            {user.is_blocked && <span className="ml-2 text-xs text-red-500">заблокирован</span>}
-                          </p>
-                          <p className="text-sm text-gray-500">
-                            {user.username ? `@${user.username}` : `ID: ${user.telegram_id}`}
-                          </p>
+                          <div className="flex items-center gap-2">
+                            <p className="font-medium text-gray-900">{user.first_name || user.username || 'Без имени'}</p>
+                            {user.is_blocked && <span className="px-1.5 py-0.5 bg-red-100 text-red-600 text-xs rounded">Заблокирован</span>}
+                          </div>
+                          <p className="text-sm text-gray-500">{user.username ? `@${user.username}` : `ID: ${user.telegram_id}`}</p>
+                          {user.tags?.length > 0 && (
+                            <div className="flex gap-1 mt-1">
+                              {user.tags.slice(0, 3).map(tag => <span key={tag} className="px-1.5 py-0.5 bg-blue-100 text-blue-600 text-xs rounded">{tag}</span>)}
+                              {user.tags.length > 3 && <span className="text-xs text-gray-400">+{user.tags.length - 3}</span>}
+                            </div>
+                          )}
                         </div>
                       </div>
                     </td>
-                    <td className="px-6 py-4 font-medium">{user.credits || 0}</td>
-                    <td className="px-6 py-4 text-gray-600">{user.cards_created || 0}</td>
-                    <td className="px-6 py-4 text-gray-600">
-                      {user.total_spent ? `${user.total_spent} ₽` : '—'}
-                    </td>
+                    <td className="px-6 py-4"><span className={`font-medium ${user.credits > 0 ? 'text-green-600' : 'text-gray-400'}`}>{user.credits}</span></td>
+                    <td className="px-6 py-4"><span className="font-medium text-gray-900">{user.cards_created}</span></td>
+                    <td className="px-6 py-4"><span className={`font-medium ${user.total_spent > 0 ? 'text-purple-600' : 'text-gray-400'}`}>{formatCurrency(user.total_spent)}</span></td>
                     <td className="px-6 py-4">
-                      <div className="flex flex-wrap gap-1">
-                        {user.tags?.slice(0, 3).map((tag: string) => (
-                          <Link
-                            key={tag}
-                            href={buildUrl({ tag, page: '1' })}
-                            className="px-2 py-0.5 bg-gray-100 text-gray-600 text-xs rounded hover:bg-gray-200"
-                          >
-                            {tag}
-                          </Link>
-                        ))}
-                        {user.tags?.length > 3 && (
-                          <span className="px-2 py-0.5 text-gray-400 text-xs">
-                            +{user.tags.length - 3}
-                          </span>
-                        )}
-                      </div>
+                      {user.utm_source ? <span className="px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded">{user.utm_source}</span>
+                       : user.referred_by ? <span className="px-2 py-1 bg-orange-100 text-orange-700 text-xs rounded">Реферал</span>
+                       : <span className="text-gray-400 text-sm">Прямой</span>}
                     </td>
-                    <td className="px-6 py-4 text-sm text-gray-500">
-                      {formatDate(user.created_at)}
-                    </td>
-                    <td className="px-6 py-4 text-right">
-                      <UserActions user={user} />
-                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-500">{formatDate(user.created_at)}</td>
+                    <td className="px-6 py-4 text-right"><UserActions user={user} onUpdate={fetchUsers} /></td>
                   </tr>
                 ))}
               </tbody>
@@ -301,35 +458,24 @@ export default async function UsersPage({
         )}
       </div>
 
-      {/* Pagination */}
       {totalPages > 1 && (
         <div className="flex items-center justify-between">
-          <p className="text-sm text-gray-500">
-            Показано {(page - 1) * 20 + 1}–{Math.min(page * 20, total)} из {total}
-          </p>
+          <p className="text-sm text-gray-500">Показано {(page - 1) * 20 + 1}–{Math.min(page * 20, total)} из {total.toLocaleString()}</p>
           <div className="flex items-center gap-2">
-            {page > 1 && (
-              <Link
-                href={buildUrl({ page: String(page - 1) })}
-                className="px-4 py-2 border border-gray-200 rounded-lg hover:bg-gray-50"
-              >
-                Назад
-              </Link>
-            )}
-            <span className="px-4 py-2 text-gray-600">
-              {page} / {totalPages}
-            </span>
-            {page < totalPages && (
-              <Link
-                href={buildUrl({ page: String(page + 1) })}
-                className="px-4 py-2 border border-gray-200 rounded-lg hover:bg-gray-50"
-              >
-                Вперёд
-              </Link>
-            )}
+            <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1} className="px-4 py-2 border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-50">Назад</button>
+            <span className="px-4 py-2 text-gray-600">{page} / {totalPages}</span>
+            <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages} className="px-4 py-2 border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-50">Вперёд</button>
           </div>
         </div>
       )}
     </div>
+  );
+}
+
+export default function UsersPage() {
+  return (
+    <Suspense fallback={<div className="flex items-center justify-center h-96"><Loader2 className="w-8 h-8 animate-spin text-blue-600" /></div>}>
+      <UsersPageContent />
+    </Suspense>
   );
 }

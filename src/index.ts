@@ -36,6 +36,17 @@ import {
   handlePriceFinal,
   PRICE_EXPLAIN_CALLBACKS,
 } from './handlers/priceExplain';
+import {
+  handleCarouselStart,
+  handleCarouselPhoto,
+  handleCarouselPrompt,
+  handleCarouselRegenerate,
+  handleCarouselNextSlide,
+  handleCarouselNextSlidePrompt,
+  handleCarouselFinish,
+  handleCarouselSessionPrompt,
+  handleCarouselImagesDone,
+} from './handlers/carousel';
 
 // Create bot instance
 const bot = new Bot<MyContext>(config.botToken);
@@ -118,9 +129,10 @@ bot.callbackQuery(CALLBACKS.BACK_TO_MENU, async (ctx) => {
 
 bot.callbackQuery(CALLBACKS.CONTINUE_TO_MENU, handleContinueToMenu);
 
+// IMAGE_CARD now uses carousel flow
 bot.callbackQuery(CALLBACKS.IMAGE_CARD, async (ctx) => {
   await ctx.answerCallbackQuery();
-  await handleImageCard(ctx, true);
+  await handleCarouselStart(ctx, true);
 });
 
 bot.callbackQuery(CALLBACKS.IMAGE_EDIT, async (ctx) => {
@@ -194,6 +206,12 @@ bot.callbackQuery(PRICE_EXPLAIN_CALLBACKS.BACK_TO_PRICING, async (ctx) => {
   await handleBuyCredits(ctx, true);
 });
 
+// Carousel callbacks
+bot.callbackQuery(CALLBACKS.CAROUSEL_REGENERATE, handleCarouselRegenerate);
+bot.callbackQuery(CALLBACKS.CAROUSEL_NEXT_SLIDE, handleCarouselNextSlide);
+bot.callbackQuery(CALLBACKS.CAROUSEL_FINISH, handleCarouselFinish);
+bot.callbackQuery(CALLBACKS.CAROUSEL_IMAGES_DONE, handleCarouselImagesDone);
+
 // ============================================
 // MESSAGE HANDLERS
 // ============================================
@@ -204,6 +222,20 @@ bot.on('message:text', async (ctx) => {
 
   // Handle prompt input based on current route
   switch (route) {
+    // Carousel routes
+    case ROUTES.CAROUSEL_WAITING_PROMPT:
+      await handleCarouselPrompt(ctx);
+      break;
+
+    case ROUTES.CAROUSEL_SESSION:
+      await handleCarouselSessionPrompt(ctx);
+      break;
+
+    case ROUTES.CAROUSEL_NEXT_SLIDE:
+      await handleCarouselNextSlidePrompt(ctx);
+      break;
+
+    // Legacy image card routes (keep for backward compatibility)
     case ROUTES.IMAGE_CARD_WAITING_PROMPT:
       await handleImageCardPrompt(ctx);
       break;
@@ -270,6 +302,13 @@ bot.on('message:photo', async (ctx) => {
   const route = ctx.session.currentRoute;
 
   switch (route) {
+    // Carousel routes
+    case ROUTES.CAROUSEL_WAITING_PHOTO:
+    case ROUTES.CAROUSEL_SESSION:
+      await handleCarouselPhoto(ctx);
+      break;
+
+    // Legacy image card routes
     case ROUTES.IMAGE_CARD_WAITING_PHOTO:
     case ROUTES.IMAGE_CARD_SESSION:
       await handleImageCardPhoto(ctx);

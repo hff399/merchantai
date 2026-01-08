@@ -11,16 +11,21 @@ interface ReferralParams {
 }
 
 class SupabaseService {
-  private client: SupabaseClient;
+  private _client: SupabaseClient;
   private bucketName = 'generated-images';
 
   constructor() {
-    this.client = createClient(config.supabase.url, config.supabase.serviceRoleKey, {
+    this._client = createClient(config.supabase.url, config.supabase.serviceRoleKey, {
       auth: {
         autoRefreshToken: false,
         persistSession: false,
       },
     });
+  }
+
+  // Public getter for direct database access
+  get client(): SupabaseClient {
+    return this._client;
   }
 
   // Upload image to Supabase Storage
@@ -34,7 +39,7 @@ class SupabaseService {
       const timestamp = Date.now();
       const fileName = `${type}/${userId}/${orderId}_${timestamp}.jpg`;
 
-      const { error } = await this.client.storage
+      const { data, error } = await this._client.storage
         .from(this.bucketName)
         .upload(fileName, buffer, {
           contentType: 'image/jpeg',
@@ -46,7 +51,7 @@ class SupabaseService {
         return null;
       }
 
-      const { data: urlData } = this.client.storage
+      const { data: urlData } = this._client.storage
         .from(this.bucketName)
         .getPublicUrl(fileName);
 
@@ -170,7 +175,7 @@ class SupabaseService {
   async incrementCardsCreated(userId: string): Promise<void> {
     try {
       // Try using the RPC function first
-      const { error: rpcError } = await this.client.rpc('increment_cards_created', { p_user_id: userId });
+      const { error: rpcError } = await this._client.rpc('increment_cards_created', { p_user_id: userId });
       
       if (rpcError) {
         console.error('RPC increment_cards_created error:', rpcError);
@@ -228,7 +233,7 @@ class SupabaseService {
 
   // Process referral commission after payment
   async processReferralCommission(paymentId: string, commissionPercent = 10): Promise<void> {
-    await this.client.rpc('process_referral_commission', {
+    await this._client.rpc('process_referral_commission', {
       p_payment_id: paymentId,
       p_commission_percent: commissionPercent,
     });
@@ -344,6 +349,131 @@ class SupabaseService {
       user = await this.createUser(telegramId, username, firstName, lastName, referralParams);
     }
     return user;
+  }
+
+  // ============================================
+  // PROMPT TEMPLATES
+  // ============================================
+
+  /**
+   * Get a prompt template by ID
+   */
+  async getPromptTemplate(id: string): Promise<{ id: string; template: string } | null> {
+    const { data, error } = await this._client
+      .from('prompt_templates')
+      .select('id, template')
+      .eq('id', id)
+      .eq('is_active', true)
+      .single();
+
+    if (error) {
+      if (error.code === 'PGRST116') return null;
+      console.error('getPromptTemplate error:', error);
+      return null;
+    }
+
+    return data;
+  }
+
+  /**
+   * Get all prompt templates
+   */
+  async getAllPromptTemplates(): Promise<Array<{
+    id: string;
+    name: string;
+    description: string;
+    template: string;
+    variables: string[];
+    category: string;
+    is_system: boolean;
+    is_active: boolean;
+    updated_at: string;
+  }>> {
+    const { data, error } = await this._client
+      .from('prompt_templates')
+      .select('*')
+      .order('category')
+      .order('is_system', { ascending: false });
+
+    if (error) {
+      console.error('getAllPromptTemplates error:', error);
+      return [];
+    }
+
+    return data || [];
+  }
+
+  /**
+   * Update a prompt template
+   */
+  async updatePromptTemplate(id: string, template: string): Promise<boolean> {
+    const { error } = await this._client
+      .from('prompt_templates')
+      .update({ 
+        template, 
+        updated_at: new Date().toISOString() 
+      })
+      .eq('id', id);
+
+    if (error) {
+      console.error('updatePromptTemplate error:', error);
+      return false;
+    }
+
+    return true;
+  }
+
+  /**
+   * Create a new prompt template
+   */
+  async createPromptTemplate(data: {
+    id: string;
+    name: string;
+    description?: string;
+    template: string;
+    variables?: string[];
+    category: 'card_generation' | 'image_edit' | 'photo_session' | 'other';
+    is_system?: boolean;
+  }): Promise<boolean> {
+    const { error } = await this._client
+      .from('prompt_templates')
+      .insert({
+        id: data.id,
+        name: data.name,
+        description: data.description || '',
+        template: data.template,
+        variables: data.variables || [],
+        category: data.category,
+        is_system: data.is_system || false,
+        is_active: true,
+      });
+
+    if (error) {
+      console.error('createPromptTemplate error:', error);
+      return false;
+    }
+
+    return true;
+  }
+
+  /**
+   * Delete (deactivate) a prompt template
+   */
+  async deletePromptTemplate(id: string): Promise<boolean> {
+    const { error } = await this._client
+      .from('prompt_templates')
+      .update({ 
+        is_active: false,
+        updated_at: new Date().toISOString() 
+      })
+      .eq('id', id);
+
+    if (error) {
+      console.error('deletePromptTemplate error:', error);
+      return false;
+    }
+
+    return true;
   }
 }
 

@@ -18,6 +18,17 @@ interface Config {
   n8n: {
     webhookUrl: string;
   };
+  openai: {
+    apiKey: string;
+    model: string;
+  };
+  gemini: {
+    apiKey: string;
+    model: string;
+  };
+  media: {
+    introVideoFileId: string | null;
+  };
   nodeEnv: string;
   port: number;
 }
@@ -48,7 +59,18 @@ export const config: Config = {
     secretKey: getEnvVar('YOOKASSA_SECRET_KEY'),
   },
   n8n: {
-    webhookUrl: getEnvVar('N8N_WEBHOOK_URL'),
+    webhookUrl: getOptionalEnvVar('N8N_WEBHOOK_URL'),
+  },
+  openai: {
+    apiKey: getEnvVar('OPENAI_API_KEY'),
+    model: getOptionalEnvVar('OPENAI_MODEL', 'gpt-4o'),
+  },
+  gemini: {
+    apiKey: getEnvVar('GEMINI_API_KEY'),
+    model: getOptionalEnvVar('GEMINI_MODEL', 'gemini-2.0-flash-exp-image-generation'),
+  },
+  media: {
+    introVideoFileId: getOptionalEnvVar('INTRO_VIDEO_FILE_ID') || null,
   },
   nodeEnv: process.env.NODE_ENV || 'development',
   port: parseInt(process.env.PORT || '3000', 10),

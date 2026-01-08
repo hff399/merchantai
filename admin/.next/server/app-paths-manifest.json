@@ -1,5 +1,16 @@
 {
-  "/page": "app/page.js",
+  "/outreach/page": "app/outreach/page.js",
+  "/outreach/campaigns/page": "app/outreach/campaigns/page.js",
+  "/outreach/leads/page": "app/outreach/leads/page.js",
   "/broadcasts/page": "app/broadcasts/page.js",
-  "/outreach/accounts/page": "app/outreach/accounts/page.js"
+  "/users/page": "app/users/page.js",
+  "/api/users/list/route": "app/api/users/list/route.js",
+  "/api/broadcasts/list/route": "app/api/broadcasts/list/route.js",
+  "/api/broadcasts/tags/route": "app/api/broadcasts/tags/route.js",
+  "/api/broadcasts/templates/list/route": "app/api/broadcasts/templates/list/route.js",
+  "/analytics/page": "app/analytics/page.js",
+  "/outreach/groups/page": "app/outreach/groups/page.js",
+  "/api/dashboard/stats/route": "app/api/dashboard/stats/route.js",
+  "/api/analytics/route": "app/api/analytics/route.js",
+  "/page": "app/page.js"
 }

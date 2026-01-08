@@ -169,7 +169,7 @@ export const TEXTS = {
   BUY_CREDITS_TITLE: '💳 Покупка кредитов',
   BUY_CREDITS_DESC: `Выберите пакет кредитов:
 
-💡 4 кредита = 1 генерация карточки`,
+💡 1 кредит = 1 генерация карточки`,
   BUY_CREDITS_PAYMENT_WAIT: '⏳ Переходим к оплате...',
   BUY_CREDITS_PAYMENT_SUCCESS: '✅ Оплата прошла успешно! Кредиты зачислены.',
   BUY_CREDITS_PAYMENT_CANCELLED: '❌ Оплата отменена.',
@@ -223,4 +223,10 @@ export const CALLBACKS = {
   // Payment
   PAYMENT_CHECK: 'payment_check',
   PAYMENT_CANCEL: 'payment_cancel',
-};
+
+  // Carousel
+  CAROUSEL_REGENERATE: 'carousel_regenerate',
+  CAROUSEL_NEXT_SLIDE: 'carousel_next_slide',
+  CAROUSEL_FINISH: 'carousel_finish',
+  CAROUSEL_IMAGES_DONE: 'carousel_images_done',
+} as const;
