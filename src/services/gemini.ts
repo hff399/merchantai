@@ -1,6 +1,5 @@
 import axios from 'axios';
 import { config } from '../config';
-import { GoogleGenAI } from "@google/genai";
 
 
 export interface GeminiImageInput {
@@ -158,11 +157,6 @@ class GeminiService {
     };
 
     try {
-        const ai = new GoogleGenAI({apiKey: config.gemini.apiKey})
-        // const response await ai.models.generateContent({
-        //     model: "gemini-3-pro-image-preview",
-        //     contents: 
-        // })
       const response = await axios.post(
         `${this.baseUrl}/models/${this.model}:generateContent?key=${this.apiKey}`,
         requestBody,

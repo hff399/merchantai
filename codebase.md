@@ -3830,7 +3830,7 @@ class GeminiService {
     };
 
     try {
-        const ai = new GoogleGenAI({apiKey: config.gemini.apiKey})
+        //const ai = new GoogleGenAI({apiKey: config.gemini.apiKey})
         // const response await ai.models.generateContent({
         //     model: "gemini-3-pro-image-preview",
         //     contents: 

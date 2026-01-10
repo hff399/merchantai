@@ -8,7 +8,6 @@ import { KeyboardBuilder } from './utils/keyboards';
 // Handlers
 import { showMainMenu, handleContinueToMenu } from './handlers/mainMenu';
 import {
-  handleImageCard,
   handleImageCardPhoto,
   handleImageCardPrompt,
   handleRegenerate,
