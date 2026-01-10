@@ -125,7 +125,7 @@ async function showIntro(ctx: MyContext): Promise<void> {
   // 2. URL to video file
   // 3. Local file path with InputFile
   
-  const videoFileId = 'BAACAgIAAxkBAAICumldNa8xfF9NRtG2kpbidctyj0SOAAJyjAAC1dHoSgwwErkVQHVWOAQ'; // Replace with actual file_id
+  const videoFileId = 'BAACAgIAAxkBAAINOmliVHHAXApAwFQlOVawBPy7MhJrAAJyjAAC1dHoSpf3WWKDda2yOAQ'; // Replace with actual file_id
   
   await ctx.replyWithVideo(videoFileId, {
     caption: TEXTS.INTRO,
