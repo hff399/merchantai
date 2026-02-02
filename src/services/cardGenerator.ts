@@ -1,5 +1,7 @@
 import { openai } from './openai';
-import { gemini } from './gemini';
+import { gemini, AspectRatio } from './gemini';
+
+export { AspectRatio };
 
 export interface ImageInput {
   url: string;
@@ -14,6 +16,7 @@ export interface CardGenerationParams {
   isEdit?: boolean; // True when editing existing card (uses only product + current card)
   styleReference?: string;
   previousSlides?: Array<{ prompt: string }>;
+  aspectRatio?: AspectRatio; // Supported: '1:1', '3:4', '4:3', '9:16', '16:9'
 }
 
 export interface CardGenerationResult {
@@ -24,8 +27,17 @@ export interface CardGenerationResult {
   error?: string;
 }
 
-// Aspect ratio instruction to append to all prompts
-const ASPECT_RATIO = 'Output image aspect ratio: 3:4 (portrait, width:height = 3:4)';
+// Helper to generate aspect ratio instruction for prompts
+const getAspectRatioInstruction = (ratio: AspectRatio = '3:4'): string => {
+  const descriptions: Record<AspectRatio, string> = {
+    '1:1': 'square',
+    '3:4': 'portrait, width:height = 3:4',
+    '4:3': 'landscape, width:height = 4:3',
+    '9:16': 'tall portrait, width:height = 9:16',
+    '16:9': 'wide landscape, width:height = 16:9',
+  };
+  return `Output image aspect ratio: ${ratio} (${descriptions[ratio]})`;
+};
 
 class CardGeneratorService {
   /**
@@ -45,7 +57,10 @@ class CardGeneratorService {
       isEdit = false,
       styleReference,
       previousSlides,
+      aspectRatio = '3:4',
     } = params;
+
+    const ASPECT_RATIO = getAspectRatioInstruction(aspectRatio);
 
     if (images.length === 0) {
       return { success: false, error: 'At least one image is required' };
@@ -106,9 +121,10 @@ ${ASPECT_RATIO}`;
 
       // Generate image using Gemini
       console.log(`[CardGenerator] Sending to Gemini with ${images.length} input images...`);
-      
+      console.log(`[CardGenerator] Aspect ratio: ${aspectRatio}`);
+
       const imageUrls = images.map(img => img.url);
-      const result = await gemini.generateImageFromUrls(finalPrompt, imageUrls);
+      const result = await gemini.generateImageFromUrls(finalPrompt, imageUrls, { aspectRatio });
 
       if (!result.success) {
         console.error(`[CardGenerator] Gemini failed: ${result.error}`);
@@ -150,11 +166,15 @@ ${ASPECT_RATIO}`;
   async editCard(
     productImageUrl: string,
     currentCardUrl: string,
-    editRequest: string
+    editRequest: string,
+    aspectRatio: AspectRatio = '3:4'
   ): Promise<CardGenerationResult> {
     console.log(`\n[CardGenerator] ========== EDIT CARD ==========`);
     console.log(`[CardGenerator] Edit request: ${editRequest}`);
-    
+    console.log(`[CardGenerator] Aspect ratio: ${aspectRatio}`);
+
+    const ASPECT_RATIO = getAspectRatioInstruction(aspectRatio);
+
     const finalPrompt = `Edit this product card image.
 
 IMAGE 1: Original product photo - keep the product exactly as shown, do not modify it
@@ -166,8 +186,8 @@ Important: Preserve the product from IMAGE 1 unchanged. Only modify the card des
 
 ${ASPECT_RATIO}`;
 
-    const result = await gemini.generateImageFromUrls(finalPrompt, [productImageUrl, currentCardUrl]);
-    
+    const result = await gemini.generateImageFromUrls(finalPrompt, [productImageUrl, currentCardUrl], { aspectRatio });
+
     return {
       success: result.success,
       imageBuffer: result.imageBuffer,
@@ -180,13 +200,16 @@ ${ASPECT_RATIO}`;
   /**
    * Simple image edit (single image + prompt) - direct Gemini call
    */
-  async editImage(imageUrl: string, editPrompt: string): Promise<CardGenerationResult> {
+  async editImage(imageUrl: string, editPrompt: string, aspectRatio: AspectRatio = '3:4'): Promise<CardGenerationResult> {
     try {
       console.log(`[CardGenerator] Editing image...`);
+      console.log(`[CardGenerator] Aspect ratio: ${aspectRatio}`);
+
+      const ASPECT_RATIO = getAspectRatioInstruction(aspectRatio);
 
       // Add aspect ratio to simple edit
       const promptWithRatio = `${editPrompt}\n\n${ASPECT_RATIO}`;
-      const result = await gemini.editImage(promptWithRatio, imageUrl);
+      const result = await gemini.editImage(promptWithRatio, imageUrl, { aspectRatio });
 
       if (!result.success) {
         return {
@@ -216,11 +239,13 @@ ${ASPECT_RATIO}`;
   async generateWithEnhancedPrompt(
     imageUrl: string,
     userPrompt: string,
-    imageDescription?: string
+    imageDescription?: string,
+    aspectRatio?: AspectRatio
   ): Promise<CardGenerationResult> {
     return this.generateCard({
       images: [{ url: imageUrl, description: imageDescription }],
       userPrompt,
+      aspectRatio,
     });
   }
 }

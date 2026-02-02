@@ -93,7 +93,7 @@ class OpenAIService {
           { role: 'user', content: userMessage },
         ],
         temperature: 0.7,
-        max_completion_tokens: 2000,
+        max_completion_tokens: 4000,
       });
 
       const generatedPrompt = response.choices[0]?.message?.content || '';
@@ -124,7 +124,7 @@ class OpenAIService {
         model: this.model,
         messages,
         temperature: 0.7,
-        max_completion_tokens: 2000,
+        max_completion_tokens: 4000,
       });
 
       return response.choices[0]?.message?.content || '';

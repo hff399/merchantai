@@ -1,5 +1,8 @@
 import { MyContext } from '../types';
 
+// Store typing intervals globally by chat ID
+const typingIntervals = new Map<number, NodeJS.Timeout>();
+
 export class MessageManager {
   /**
    * Delete a message safely (catches errors if message doesn't exist)
@@ -58,17 +61,42 @@ export class MessageManager {
 
   /**
    * Send a processing message that will be updated/deleted later
+   * Also starts "typing" indicator that refreshes every 4 seconds
    */
   static async sendProcessing(ctx: MyContext, text: string): Promise<number> {
+    const chatId = ctx.chat!.id;
+
+    // Send typing indicator immediately
+    try {
+      await ctx.api.sendChatAction(chatId, 'typing');
+    } catch {}
+
+    // Start interval to keep typing indicator active (expires after ~5 sec)
+    const interval = setInterval(async () => {
+      try {
+        await ctx.api.sendChatAction(chatId, 'typing');
+      } catch {}
+    }, 4000);
+
+    typingIntervals.set(chatId, interval);
+
     const message = await ctx.reply(text);
     ctx.session.processingMessageId = message.message_id;
     return message.message_id;
   }
 
   /**
-   * Delete the processing message
+   * Delete the processing message and stop typing indicator
    */
   static async deleteProcessing(ctx: MyContext): Promise<void> {
+    const chatId = ctx.chat?.id;
+
+    // Stop typing indicator
+    if (chatId && typingIntervals.has(chatId)) {
+      clearInterval(typingIntervals.get(chatId)!);
+      typingIntervals.delete(chatId);
+    }
+
     if (ctx.session.processingMessageId) {
       await this.deleteMessage(ctx, ctx.session.processingMessageId);
       ctx.session.processingMessageId = undefined;

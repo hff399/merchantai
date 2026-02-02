@@ -12,34 +12,15 @@ import {
   type PromptTemplate,
 } from '../constants/prompts';
 
-interface CachedPrompt {
-  template: string;
-  cachedAt: number;
-}
-
-const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
-
 class PromptsService {
-  private cache: Map<string, CachedPrompt> = new Map();
-
   /**
    * Get prompt template from database or fallback to default
    */
   async getTemplate(id: string): Promise<string> {
-    // Check cache first
-    const cached = this.cache.get(id);
-    if (cached && Date.now() - cached.cachedAt < CACHE_TTL) {
-      return cached.template;
-    }
-
     try {
       const data = await supabase.getPromptTemplate(id);
 
       if (data) {
-        this.cache.set(id, {
-          template: data.template,
-          cachedAt: Date.now(),
-        });
         return data.template;
       }
     } catch (e) {
@@ -87,11 +68,7 @@ class PromptsService {
    * Update template (from admin panel)
    */
   async updateTemplate(id: string, template: string): Promise<boolean> {
-    const success = await supabase.updatePromptTemplate(id, template);
-    if (success) {
-      this.cache.delete(id);
-    }
-    return success;
+    return supabase.updatePromptTemplate(id, template);
   }
 
   /**
@@ -121,18 +98,7 @@ class PromptsService {
    * Delete template
    */
   async deleteTemplate(id: string): Promise<boolean> {
-    const success = await supabase.deletePromptTemplate(id);
-    if (success) {
-      this.cache.delete(id);
-    }
-    return success;
-  }
-
-  /**
-   * Clear cache
-   */
-  clearCache(): void {
-    this.cache.clear();
+    return supabase.deletePromptTemplate(id);
   }
 
   /**

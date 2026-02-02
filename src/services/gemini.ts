@@ -15,6 +15,12 @@ export interface GeminiGenerationResult {
   textResponse?: string;
 }
 
+export type AspectRatio = '1:1' | '3:4' | '4:3' | '9:16' | '16:9';
+
+export interface GeminiGenerationOptions {
+  aspectRatio?: AspectRatio;
+}
+
 class GeminiService {
   private apiKey: string;
   private model: string;
@@ -114,11 +120,15 @@ class GeminiService {
   /**
    * Generate image using Gemini with multiple input images
    * Supports up to 8 input images
+   * @param aspectRatio - Supported ratios: '1:1', '3:4', '4:3', '9:16', '16:9'
    */
   async generateImage(
     prompt: string,
-    images: GeminiImageInput[]
+    images: GeminiImageInput[],
+    options: GeminiGenerationOptions = {}
   ): Promise<GeminiGenerationResult> {
+    const { aspectRatio = '3:4' } = options;
+
     if (images.length === 0) {
       return { success: false, error: 'At least one image is required' };
     }
@@ -153,6 +163,9 @@ class GeminiService {
       ],
       generationConfig: {
         responseModalities: ['TEXT', 'IMAGE'],
+      },
+      imageGenerationConfig: {
+        aspectRatio,
       },
     };
 
@@ -229,20 +242,22 @@ class GeminiService {
    */
   async generateImageFromUrls(
     prompt: string,
-    imageUrls: string[]
+    imageUrls: string[],
+    options: GeminiGenerationOptions = {}
   ): Promise<GeminiGenerationResult> {
     try {
       console.log(`\n[Gemini] ========== GENERATION REQUEST ==========`);
       console.log(`[Gemini] Images: ${imageUrls.length}`);
+      console.log(`[Gemini] Aspect ratio: ${options.aspectRatio || '3:4'}`);
       console.log(`[Gemini] Prompt length: ${prompt.length} chars`);
       console.log(`[Gemini] FINAL PROMPT:\n${prompt}`);
       console.log(`[Gemini] ==========================================\n`);
-      
+
       // Download all images in parallel
       const downloadPromises = imageUrls.map(url => this.downloadImageAsBase64(url));
       const images = await Promise.all(downloadPromises);
 
-      return this.generateImage(prompt, images);
+      return this.generateImage(prompt, images, options);
     } catch (error: any) {
       return {
         success: false,
@@ -256,9 +271,10 @@ class GeminiService {
    */
   async editImage(
     prompt: string,
-    imageUrl: string
+    imageUrl: string,
+    options: GeminiGenerationOptions = {}
   ): Promise<GeminiGenerationResult> {
-    return this.generateImageFromUrls(prompt, [imageUrl]);
+    return this.generateImageFromUrls(prompt, [imageUrl], options);
   }
 }
 

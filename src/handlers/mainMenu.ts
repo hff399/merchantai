@@ -3,7 +3,7 @@ import { TEXTS, CALLBACKS } from '../constants/texts';
 import { KeyboardBuilder } from '../utils/keyboards';
 import { MessageManager } from '../utils/helpers';
 import { supabase } from '../services/supabase';
-import { InlineKeyboard } from 'grammy';
+import { showDemoWelcome } from './promptConstructor';
 
 // Parse start parameter for referral tracking
 // Formats supported:
@@ -114,24 +114,7 @@ export async function showMainMenu(
 
 // Show introduction for new users
 async function showIntro(ctx: MyContext): Promise<void> {
-  const introKeyboard = new InlineKeyboard()
-    .url('📖 Читать гайд', 'https://teletype.in/@merchantai/guide')
-    .row()
-    .text('▶️ Продолжить', CALLBACKS.CONTINUE_TO_MENU);
-
-  // Send video with caption and buttons
-  // You can use either:
-  // 1. File ID (after first upload, Telegram returns file_id)
-  // 2. URL to video file
-  // 3. Local file path with InputFile
-  
-  const videoFileId = 'BAACAgIAAxkBAAINOmliVHHAXApAwFQlOVawBPy7MhJrAAJyjAAC1dHoSpf3WWKDda2yOAQ'; // Replace with actual file_id
-  
-  await ctx.replyWithVideo(videoFileId, {
-    caption: TEXTS.INTRO,
-    parse_mode: 'HTML',
-    reply_markup: introKeyboard,
-  });
+  await showDemoWelcome(ctx);
 }
 
 // Handle continue to menu from intro

@@ -67,7 +67,7 @@ export const config: Config = {
   },
   gemini: {
     apiKey: getEnvVar('GEMINI_API_KEY'),
-    model: getOptionalEnvVar('GEMINI_MODEL', 'gemini-2.0-flash-exp-image-generation'),
+    model: getOptionalEnvVar('GEMINI_MODEL', 'gemini-3-pro-image-preview'),
   },
   media: {
     introVideoFileId: getOptionalEnvVar('INTRO_VIDEO_FILE_ID') || null,

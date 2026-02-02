@@ -1,4 +1,5 @@
 import { Context, SessionFlavor } from 'grammy';
+import { DemoConstructorSession } from './handlers/promptConstructor';
 
 export interface User {
   id: string;
@@ -144,6 +145,7 @@ export interface SessionData {
   imageEditSession?: ImageEditSession;
   // New carousel session
   carouselSession?: CarouselSession;
+  demoConstructorSession?: DemoConstructorSession;
 }
 
 export type MyContext = Context & SessionFlavor<SessionData>;
