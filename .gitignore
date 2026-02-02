@@ -47,3 +47,6 @@ dist/
 # typescript
 ./admin/*.tsbuildinfo
 ./admin/next-env.d.ts
+# Telegram tester credentials
+.env.tester
+.tg-session

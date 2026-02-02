@@ -82,7 +82,7 @@ export async function handleImageCardPhoto(ctx: MyContext): Promise<void> {
     if (user.credits < IMAGE_CARD_COST) {
       await ctx.reply(TEXTS.IMAGE_CARD_NO_CREDITS, {
         parse_mode: 'HTML',
-        reply_markup: KeyboardBuilder.creditPackages(),
+        reply_markup: KeyboardBuilder.paywallPackages('pro'),
       });
       return;
     }
@@ -128,7 +128,7 @@ export async function handleImageCardPrompt(ctx: MyContext): Promise<void> {
   if (user.credits < IMAGE_CARD_COST) {
     await ctx.reply(TEXTS.IMAGE_CARD_NO_CREDITS, {
       parse_mode: 'HTML',
-      reply_markup: KeyboardBuilder.creditPackages(),
+      reply_markup: KeyboardBuilder.paywallPackages('pro'),
     });
     return;
   }
@@ -169,7 +169,7 @@ export async function handleRegenerate(ctx: MyContext): Promise<void> {
   if (user.credits < IMAGE_CARD_COST) {
     await ctx.reply(TEXTS.IMAGE_CARD_NO_CREDITS, {
       parse_mode: 'HTML',
-      reply_markup: KeyboardBuilder.creditPackages(),
+      reply_markup: KeyboardBuilder.paywallPackages('pro'),
     });
     return;
   }
@@ -240,7 +240,7 @@ async function generateImageCard(ctx: MyContext, userId: string): Promise<void> 
         status: 'completed',
         output_data: {
           images: result.images,
-          generated_image_url: imageUrl,
+          generated_image_url: imageUrl ?? undefined,
         },
       });
 

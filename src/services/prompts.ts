@@ -14,19 +14,11 @@ import {
 
 class PromptsService {
   /**
-   * Get prompt template from database or fallback to default
+   * Get prompt template from LOCAL configuration
+   * Database lookup removed - always use local prompts for consistency
    */
   async getTemplate(id: string): Promise<string> {
-    try {
-      const data = await supabase.getPromptTemplate(id);
-
-      if (data) {
-        return data.template;
-      }
-    } catch (e) {
-      // Silently fallback to defaults
-    }
-
+    // Always use local prompts from constants/prompts.ts
     return this.getDefaultTemplate(id);
   }
 

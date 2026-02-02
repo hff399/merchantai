@@ -208,7 +208,7 @@ async function processImageEdit(ctx: MyContext, userId: string): Promise<void> {
         status: 'completed',
         output_data: {
           images: result.images,
-          generated_image_url: imageUrl,
+          generated_image_url: imageUrl ?? undefined,
         },
       });
 

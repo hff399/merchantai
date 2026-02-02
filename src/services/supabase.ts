@@ -132,7 +132,7 @@ class SupabaseService {
         first_name: firstName || null,
         last_name: lastName || null,
         plan: 'free',
-        credits: 12,
+        credits: 4, // 1 test generation
         cards_created: 0,
         referred_by: referrerId,
         utm_source: referralParams?.utmSource || null,

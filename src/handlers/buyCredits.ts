@@ -9,41 +9,34 @@ import { notificationBot } from '../services/notificationBot';
 export async function handleBuyCredits(ctx: MyContext, editMessage = false): Promise<void> {
   await MessageManager.cleanup(ctx);
 
-  const starter = CREDIT_PACKAGES.starter;
-  const pro = CREDIT_PACKAGES.pro;
-  const big = CREDIT_PACKAGES.big;
+  const creditsText = `<b>Тарифы</b>
 
-
-    const creditsText = `<b>Тарифы</b>
-
-⭐ <b>${starter.name}</b> — <s>${starter.price + 300} ₽</s> <b>${starter.price} ₽</b> 
-${starter.cardsCount} генераций · ~${Math.round(starter.price / starter.cardsCount)}₽ / генерация  
+⭐ <b>Starter</b> — <s>890 ₽</s> 590 ₽
+15 генераций · ~39₽ / генерация
 Базовый функционал для знакомства с ботом.
-• Генерация карточек  
-• Редактирование результатов   
+• Генерация карточек
+• Редактирование результатов
 
 
-✅ <b>${pro.name} — популярный</b> — <s>${pro.price + 400} ₽</s> <b>${pro.price} ₽</b>   
-${pro.cardsCount} генераций · ~${Math.round(pro.price / pro.cardsCount)}₽ / генерация  
+✅ <b>Pro — популярный</b> — <s>1890 ₽</s> 1490 ₽
+45 генераций · ~33₽ / генерация
 Для тех, кто хочет получать <b>максимум качества</b>.
-• Приоритетная поддержка  
+• Приоритетная поддержка
 • Лучшее соотношение кол-во/цена
 
 
-💎 <b>${big.name}</b> — <s>${big.price + 800} ₽</s> <b>${big.price} ₽</b>   
-${big.cardsCount} генераций · ~29₽ / генерация  
-• Всё то же, что в <b>${pro.name}</b>  
-• На <b>17%</b> выгоднее, чем ${pro.name}  
-• В <b>4 раза</b> больше генераций — для тех, кому важен объём  
+💎 <b>Big</b> — <s>5790 ₽</s> 4990 ₽
+170 генераций · ~29₽ / генерация
+• Всё то же, что в Pro
+• На <b>17%</b> выгоднее, чем Pro
+• В <b>4 раза</b> больше генераций — для тех, кому важен объём
 
 
-<b>Enterprise</b> — от <b>10 000 ₽</b>  
+<b>Enterprise</b> — от 10 000 ₽
 Индивидуальные условия под большие объёмы.
 
-<blockquote>
-<b>Как считаются кредиты</b>  
-<i>4 токена = 1 генерация</i>
-</blockquote>`;
+<blockquote><b>Как считаются кредиты</b>
+<i>4 токена = 1 генерация</i></blockquote>`;
 
 
   if (editMessage && ctx.callbackQuery?.message) {
@@ -70,7 +63,12 @@ export async function handleCreditPackageSelection(
   ctx: MyContext,
   packageId: string
 ): Promise<void> {
-  const creditPackage = CREDIT_PACKAGES[packageId];
+  // Type guard for valid package IDs
+  if (!['starter', 'pro', 'big', 'enterprise'].includes(packageId)) {
+    await ctx.answerCallbackQuery({ text: 'Неверный пакет', show_alert: true });
+    return;
+  }
+  const creditPackage = CREDIT_PACKAGES[packageId as keyof typeof CREDIT_PACKAGES];
 
   if (!creditPackage) {
     await ctx.answerCallbackQuery({ text: 'Неверный пакет', show_alert: true });
@@ -189,7 +187,12 @@ ${creditPackage.credits} токенов · ${creditPackage.cardsCount} гене�
 export async function handlePaymentCheck(ctx: MyContext): Promise<void> {
   await ctx.answerCallbackQuery();
 
-  const paymentData = ctx.session.tempData;
+  const paymentData = ctx.session.tempData as {
+    paymentId?: string;
+    yooPaymentId?: string;
+    packageId?: string;
+    credits?: number;
+  };
 
   if (!paymentData?.paymentId || !paymentData?.yooPaymentId) {
     await ctx.reply('❌ Информация о платеже не найдена', {
@@ -221,11 +224,12 @@ export async function handlePaymentCheck(ctx: MyContext): Promise<void> {
       await supabase.updateUserCredits(user.id, creditsToAdd);
 
       // Send notification about purchase
-      const creditPackage = CREDIT_PACKAGES[paymentData.packageId];
+      const pkgId = paymentData.packageId as keyof typeof CREDIT_PACKAGES | undefined;
+      const creditPackage = pkgId ? CREDIT_PACKAGES[pkgId] : undefined;
       await notificationBot.notifyPurchase(
         user.id,
         ctx.from?.username,
-        creditPackage?.name || paymentData.packageId,
+        creditPackage?.name || paymentData.packageId || 'Unknown',
         creditsToAdd,
         creditPackage?.price || 0,
         'RUB'
@@ -271,7 +275,7 @@ export async function handlePaymentCheck(ctx: MyContext): Promise<void> {
 export async function handlePaymentCancel(ctx: MyContext): Promise<void> {
   await ctx.answerCallbackQuery();
 
-  const paymentData = ctx.session.tempData;
+  const paymentData = ctx.session.tempData as { paymentId?: string };
 
   if (paymentData?.paymentId) {
     await supabase.updatePayment(paymentData.paymentId, {

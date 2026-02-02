@@ -127,7 +127,8 @@ class GeminiService {
     images: GeminiImageInput[],
     options: GeminiGenerationOptions = {}
   ): Promise<GeminiGenerationResult> {
-    const { aspectRatio = '3:4' } = options;
+    // aspectRatio reserved for future API support
+    const { aspectRatio: _aspectRatio = '3:4' } = options;
 
     if (images.length === 0) {
       return { success: false, error: 'At least one image is required' };
@@ -163,10 +164,10 @@ class GeminiService {
       ],
       generationConfig: {
         responseModalities: ['TEXT', 'IMAGE'],
+        temperature: 0.4, // Lower for more consistent, structured outputs
       },
-      imageGenerationConfig: {
-        aspectRatio,
-      },
+      // Note: aspectRatio may not be supported in all model versions
+      // If you need aspect ratio control, consider using Imagen models instead
     };
 
     try {

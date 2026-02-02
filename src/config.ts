@@ -28,6 +28,8 @@ interface Config {
   };
   media: {
     introVideoFileId: string | null;
+    demoProductImageUrl: string;
+    referenceImages: string[]; // URLs of reference infographic examples
   };
   nodeEnv: string;
   port: number;
@@ -71,6 +73,19 @@ export const config: Config = {
   },
   media: {
     introVideoFileId: getOptionalEnvVar('INTRO_VIDEO_FILE_ID') || null,
+    demoProductImageUrl: getOptionalEnvVar(
+      'DEMO_PRODUCT_IMAGE_URL',
+      // Наушники Sony - хорошее демо изображение для карточки
+      'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=800&q=80'
+    ),
+    // Reference images - good infographic examples to attach to every generation
+    // These are loaded from env REFERENCE_IMAGES (comma-separated URLs) or use defaults
+    referenceImages: process.env.REFERENCE_IMAGES?.split(',').filter(Boolean) || [
+      // Default placeholder URLs - replace with actual hosted infographic examples
+      // 'https://your-storage.com/examples/cosmetics-card.jpg',
+      // 'https://your-storage.com/examples/tech-card.jpg',
+      // 'https://your-storage.com/examples/food-card.jpg',
+    ],
   },
   nodeEnv: process.env.NODE_ENV || 'development',
   port: parseInt(process.env.PORT || '3000', 10),
