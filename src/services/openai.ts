@@ -135,7 +135,7 @@ class OpenAIService {
 
       // Clean up the prompt (remove markdown code blocks if present)
       const cleanedPrompt = generatedPrompt
-        .replace(/```[\s\S]*?```/g, (match) => match.replace(/```\w*\n?/g, '').trim())
+        .replace(/```[\s\S]*?```/g, (match: string) => match.replace(/```\w*\n?/g, '').trim())
         .trim();
 
       // LOG THE GENERATED PROMPT FOR DEBUGGING
