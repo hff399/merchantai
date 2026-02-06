@@ -121,11 +121,6 @@ bot.catch((err) => {
 
 // Command handlers
 bot.command('start', async (ctx) => {
-  // Block when user has no credits
-  if (await shouldBlockWithPaywall(ctx)) {
-    await showDemoPaywall(ctx);
-    return;
-  }
   // Extract start parameter for referral tracking
   // Format: /start ref_XXXXXXXX or /start utm_source=xxx
   const startParam = ctx.match;
@@ -133,11 +128,6 @@ bot.command('start', async (ctx) => {
 });
 
 bot.command('menu', async (ctx) => {
-  // Block when user has no credits
-  if (await shouldBlockWithPaywall(ctx)) {
-    await showDemoPaywall(ctx);
-    return;
-  }
   await showMainMenu(ctx);
 });
 
@@ -145,11 +135,6 @@ bot.command('menu', async (ctx) => {
 bot.command('test', handleTestModeStart);
 
 bot.command('help', async (ctx) => {
-  // Block when user has no credits
-  if (await shouldBlockWithPaywall(ctx)) {
-    await showDemoPaywall(ctx);
-    return;
-  }
   const helpText = `🤖 *MerchantAI - Помощь*
 
 *Основные команды:*
